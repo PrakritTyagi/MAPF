@@ -1,6 +1,6 @@
 #include <MAPFPlanner.h>
 #include <random>
-
+#include<vector>
 
 struct AstarNode
 {
@@ -33,7 +33,14 @@ void MAPFPlanner::initialize(int preprocess_time_limit)
     cout << "planner initialize done" << endl;
 }
 
+int MAPFPlanner::sum_of_costs(vector<list<pair<int,int>>> paths){
+    int sum = 0;
+    for(auto path: paths){
+        sum += path.size();
+    }
+    return sum;
 
+}
 // plan using simple A* that ignores the time dimension
 void MAPFPlanner::plan(int time_limit,vector<Action> & actions) 
 {
@@ -71,9 +78,16 @@ void MAPFPlanner::plan(int time_limit,vector<Action> & actions)
     }
   return;
 }
+bool MAPFPlanner::found_node(vector<AstarNode*> constraints, AstarNode* node){
+    for(auto n: constraints){
+        if(n->location==node->location && n->direction==node->direction && n->t==node->t){
+            return true;
+        }
+    }
+    return false;
+}
 
-
-list<pair<int,int>> MAPFPlanner::single_agent_plan(int start,int start_direct,int end)
+list<pair<int,int>> MAPFPlanner::single_agent_plan(int start,int start_direct,int end, vector<AstarNode*> constraints)
 {
     list<pair<int,int>> path;
     priority_queue<AstarNode*,vector<AstarNode*>,cmp> open_list;
@@ -103,20 +117,27 @@ list<pair<int,int>> MAPFPlanner::single_agent_plan(int start,int start_direct,in
             if (close_list.find(neighbor.first*4 + neighbor.second) != close_list.end())
                 continue;
             if (all_nodes.find(neighbor.first*4 + neighbor.second) != all_nodes.end())
-            {
+            {   
                 AstarNode* old = all_nodes[neighbor.first*4 + neighbor.second];
                 if (curr->g + 1 < old->g)
-                {
+        
+                {   AstarNode node(old->location,old->direction,curr->g+1,old->h+curr->g+1,curr->t+1,curr);
+                    if(!found_node(constraints, &node)){ 
                     old->g = curr->g+1;
                     old->f = old->h+old->g;
                     old->parent = curr;
+                    old->t=curr->t+1;
+                    }
                 }
             }
             else
-            {
+            {   
+                
                 AstarNode* next_node = new AstarNode(neighbor.first, neighbor.second,
-                    curr->g+1,getManhattanDistance(neighbor.first,end), curr);
-                open_list.push(next_node);
+                    curr->g+1,getManhattanDistance(neighbor.first,end),curr->t ,curr);
+                if(!found_node(constraints, next_node)){
+                    open_list.push(next_node);
+                }
                 all_nodes[neighbor.first*4+neighbor.second] = next_node;
             }
         }
