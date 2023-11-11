@@ -2,19 +2,7 @@
 #include <random>
 #include<vector>
 
-struct AstarNode
-{
-    int location;
-    int direction;
-    int f,g,h;
-    AstarNode* parent;
-    int t = 0;
-    bool closed = false;
-    AstarNode(int _location,int _direction, int _g, int _h, AstarNode* _parent):
-        location(_location), direction(_direction),f(_g+_h),g(_g),h(_h),parent(_parent) {}
-    AstarNode(int _location,int _direction, int _g, int _h, int _t, AstarNode* _parent):
-        location(_location), direction(_direction),f(_g+_h),g(_g),h(_h),t(_t),parent(_parent) {}
-};
+
 
 
 
