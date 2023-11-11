@@ -367,11 +367,6 @@ int MAPFPlanner::Node_cost(std::vector<std::list<std::pair<int, int>>>& paths)
     return cost;
 }
 
-void combinationsUtil(const std::vector<int>& arr, std::vector<std::vector<int>>& result, std::vector<int>& combination, int start, int end, int index, int k) {
-    if (index == k) {
-        result.push_back(combination);
-        return;
-    }
 
     for (int i = start; i <= end && end - i + 1 >= k - index; i++) {
         combination[index] = arr[i];
