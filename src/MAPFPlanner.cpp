@@ -16,7 +16,7 @@ struct AstarNode
         location(_location), direction(_direction),f(_g+_h),g(_g),h(_h),t(_t),parent(_parent) {}
 };
 
-struct constraint{
+struct constraint_format{
     public:
     int agent_id,t, vertex_1, vertex_2;
     constraint(int _agent_id, int _vertex_1, int _vertex_2, int t): agent_id(_agent_id), vertex_1(_vertex_1), vertex_2(_vertex_2), t(t) {}
@@ -51,7 +51,8 @@ int MAPFPlanner::sum_of_costs(vector<list<pair<int,int>>> paths){
 
 // plan using simple A* that ignores the time dimension
 void MAPFPlanner::plan(int time_limit,vector<Action> & actions) 
-{
+{   
+    constraint c1(0, 0, 1, 0);
     actions = std::vector<Action>(env->curr_states.size(), Action::W);
     for (int i = 0; i < env->num_of_agents; i++) 
     {
@@ -64,7 +65,7 @@ void MAPFPlanner::plan(int time_limit,vector<Action> & actions)
         {
             path = single_agent_plan(env->curr_states[i].location,
                                     env->curr_states[i].orientation,
-                                    env->goal_locations[i].front().first);
+                                    env->goal_locations[i].front().first, {c1});
         }
         if (path.front().first != env->curr_states[i].location)
         {
@@ -87,7 +88,7 @@ void MAPFPlanner::plan(int time_limit,vector<Action> & actions)
   return;
 }
 
-bool MAPFPlanner::found_node(vector<constraint> constraints, AstarNode* node){
+bool MAPFPlanner::found_node(vector<constraint_format> constraints, AstarNode* node){
     for(auto n: constraints){
         if(n.vertex_1 ==node->location && n.t==node->t){
             return true;
@@ -96,7 +97,7 @@ bool MAPFPlanner::found_node(vector<constraint> constraints, AstarNode* node){
     return false;
 }
 
-list<pair<int,int>> MAPFPlanner::single_agent_plan(int start,int start_direct,int end, vector<constraint> constraints)
+list<pair<int,int>> MAPFPlanner::single_agent_plan(int start,int start_direct,int end, vector<constraint_format> constraints)
 {
     list<pair<int,int>> path;
     priority_queue<AstarNode*,vector<AstarNode*>,cmp> open_list;

@@ -20,10 +20,10 @@ public:
     virtual void plan(int time_limit, std::vector<Action> & plan);
 
     // Start kit dummy implementation
-    std::list<pair<int,int>>single_agent_plan(int start,int start_direct, int end, vector<constraint> constraints);
+    std::list<pair<int,int>>single_agent_plan(int start,int start_direct, int end, vector<constraint_format> constraints);
     int getManhattanDistance(int loc1, int loc2);
     int sum_of_costs(vector<list<pair<int,int>>> paths);
-    bool found_node(vector<constraint> constraints, AstarNode* node);
+    bool found_node(vector<constraint_format> constraints, AstarNode* node);
     std::list<pair<int,int>> getNeighbors(int location, int direction);
     bool validateMove(int loc,int loc2);
 };
