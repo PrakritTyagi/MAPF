@@ -53,23 +53,8 @@ void MAPFPlanner::plan(int time_limit,vector<Action> & actions)
     // std::cout << "Conflicts Resolved!" << std::endl;
 
     // Go through the paths and find the conflicts and resolve them
-    std::unordered_set<conflict, conflictHash, conflictEqual> conflicts;
-    int timestep = 0; // define timestep
-    for (int i = 0; i < env->num_of_agents; i++) {
-        for (int j = i + 1; j < env->num_of_agents; j++) {
-            // Check if agents i and j collide at the current timestep
-            auto it_i = std::next(paths[i].begin(), timestep);
-            auto it_j = std::next(paths[j].begin(), timestep);
-            if (it_i != paths[i].end() && it_j != paths[j].end() && *it_i == *it_j) {
-                conflicts.emplace(i, j, timestep);
-            }
-            timestep++;
-        }
-        timestep = 0;
-    }
 
     // Resolve conflicts using CBS (or other conflict resolution method)
-    resolveConflicts(paths, conflicts);
     // std::cout << "Conflicts Resolved!" << std::endl;
 
     // Update the actions based on the resolved paths
@@ -265,23 +250,6 @@ list<pair<int,int>> MAPFPlanner::getNeighbors(int location,int direction)
 }
 
 // Resolve conflicts using CBS (or other conflict resolution method)
-void MAPFPlanner::resolveConflicts(std::vector<std::list<std::pair<int, int>>>& paths,
-                                   const std::unordered_set<conflict, conflictHash, conflictEqual>& conflicts) 
-{
-    for (const auto& conflict : conflicts) 
-    {
-        // In this simple example, resolve conflicts by giving priority to one of the agents
-        int agentToMove = (rand() % 2 == 0) ? conflict.agent1 : conflict.agent2;
-
-        // Modify the path of the agent to avoid the conflict
-        if (std::distance(paths[agentToMove].begin(), paths[agentToMove].end()) > conflict.timestep + 1) {
-            // Move the agent to a neighboring cell (you might want to implement a more sophisticated strategy)
-            auto it = paths[agentToMove].begin();
-            std::advance(it, conflict.timestep + 1);
-            *it = std::make_pair(it->first + 1, it->second); // move the agent to a neighboring cell
-        }
-    }
-}
 
 int MAPFPlanner::Node_cost(std::vector<std::list<std::pair<int, int>>>& paths)
 {
@@ -315,14 +283,14 @@ std::vector<std::vector<int>> MAPFPlanner::combinations(const std::vector<int>& 
     return result;
 }
 
-conflict MAPFPlanner::findAgentConflicts(const std::vector<std::list<std::pair<int, int>>>& paths) 
+conflict MAPFPlanner::findVertexConflicts(const std::vector<std::list<std::pair<int, int>>>& paths) 
 {
     std::vector<int> agentIndices(paths.size());
     std::iota(agentIndices.begin(), agentIndices.end(), 0);  // Fill with 0, 1, ..., n-1
 
     std::vector<std::vector<int>> agentCombinations = combinations(agentIndices, 2);
 
-    // Check conflicts for each combination of k agents
+    // Check conflicts for each combination of 2 agents
     for (const auto& combination : agentCombinations) {
         // In the combination, combination[0] is the first agent and combination[1] is the second agent
         int agent1 = combination[0];
@@ -347,3 +315,39 @@ conflict MAPFPlanner::findAgentConflicts(const std::vector<std::list<std::pair<i
     }
     return conflict();
 }
+
+//create a function to get the first edge conflicts
+conflict MAPFPlanner::findEdgeConflicts(const std::vector<std::list<std::pair<int, int>>>& paths) 
+{
+    std::vector<int> agentIndices(paths.size());
+    std::vector<std::vector<int>> agentCombinations = combinations(agentIndices, 2);
+
+    // Check conflicts for each combination of 2 agents
+    for (const auto& combination : agentCombinations) {
+        // In the combination, combination[0] is the first agent and combination[1] is the second agent
+        int agent1 = combination[0];
+        int agent2 = combination[1];
+
+        // Find the agent with the shorter path
+        int shorterAgent = (paths[agent1].size() < paths[agent2].size()) ? agent1 : agent2;
+        int longerAgent = (shorterAgent == agent1) ? agent2 : agent1;
+
+        // Run a loop of length equal to the length of the shorter path where ith element of both paths are checked if they are equal
+        for (int i = 0; i < paths[shorterAgent].size()-1; i++) 
+        {
+            // Create variable which hold the value of ith and i+1th path element of both agents without using auto
+            std::pair<int, int> shorterAgentPath_Current = *std::next(paths[shorterAgent].begin(), i);
+            std::pair<int, int> shorterAgentPath_Next = *std::next(paths[shorterAgent].begin(), i+1);
+            std::pair<int, int> longerAgentPath_Current = *std::next(paths[longerAgent].begin(), i);
+            std::pair<int, int> longerAgentPath_Next = *std::next(paths[longerAgent].begin(), i+1);
+            // Check if the two agents are at the same location at the same timestep
+            if (shorterAgentPath_Current == longerAgentPath_Next && shorterAgentPath_Next == longerAgentPath_Current) 
+            {
+                return conflict(shorterAgent, longerAgent, shorterAgentPath_Current, longerAgentPath_Current, i);
+            }
+        }
+
+    }
+    return conflict();
+}
+

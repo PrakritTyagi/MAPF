@@ -24,13 +24,6 @@ struct conflict {
     conflict(int a1, int a2, std::pair<int, int> _vertex1, std::pair<int, int> _vertex2, int t) : agent1(a1), agent2(a2), vertex1(_vertex1), vertex2(_vertex2), timestep(t) {}
 };
 
-// Define hash and equality functions for Conflict
-struct conflictHash {
-    size_t operator()(const conflict& conflict) const {
-        return std::hash<int>()(conflict.agent1) ^ std::hash<int>()(conflict.agent2) ^ std::hash<int>()(conflict.timestep);
-    }
-};
-
 struct conflictEqual {
     bool operator()(const conflict& a, const conflict& b) const {
         return a.agent1 == b.agent1 && a.agent2 == b.agent2 && a.timestep == b.timestep;
@@ -61,14 +54,10 @@ public:
 
     //My work
     void getMAPFPlan(vector<State> & curr_states, vector<vector<pair<int,int>>> & paths, int time_limit);
-    std::unordered_set<conflict, conflictHash, conflictEqual> detectConflicts(
-    const std::vector<std::list<std::pair<int, int>>>& paths, int timestep);
-    void resolveConflicts(std::vector<std::list<std::pair<int, int>>>& paths,
-                                   const std::unordered_set<conflict, conflictHash, conflictEqual>& conflicts);
     int Node_cost(std::vector<std::list<std::pair<int, int>>>& paths);
 
     void combinationsUtil(const std::vector<int>& arr, std::vector<std::vector<int>>& result, std::vector<int>& combination, int start, int end, int index, int k); 
     std::vector<std::vector<int>> combinations(const std::vector<int>& arr, int k);
-    conflict findAgentConflicts(const std::vector<std::list<std::pair<int, int>>>& paths); 
-
+    conflict findVertexConflicts(const std::vector<std::list<std::pair<int, int>>>& paths); 
+    conflict findEdgeConflicts(const std::vector<std::list<std::pair<int, int>>>& paths);
 };
