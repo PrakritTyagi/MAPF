@@ -19,8 +19,8 @@ struct AstarNode
 struct constraint_format{
     public:
     int agent_id,t, vertex_1, vertex_2;
-    constraint(int _agent_id, int _vertex_1, int _vertex_2, int t): agent_id(_agent_id), vertex_1(_vertex_1), vertex_2(_vertex_2), t(t) {}
-    constraint(int _agent_id, int _vertex_1, int t): agent_id(_agent_id), vertex_1(_vertex_1), t(t) {}
+    constraint_format(int _agent_id, int _vertex_1, int _vertex_2, int t): agent_id(_agent_id), vertex_1(_vertex_1), vertex_2(_vertex_2), t(t) {}
+    constraint_format(int _agent_id, int _vertex_1, int t): agent_id(_agent_id), vertex_1(_vertex_1), t(t) {}
 };
 
 
@@ -52,7 +52,7 @@ int MAPFPlanner::sum_of_costs(vector<list<pair<int,int>>> paths){
 // plan using simple A* that ignores the time dimension
 void MAPFPlanner::plan(int time_limit,vector<Action> & actions) 
 {   
-    constraint c1(0, 0, 1, 0);
+    constraint_format c1(0, 0, 1, 0);
     actions = std::vector<Action>(env->curr_states.size(), Action::W);
     for (int i = 0; i < env->num_of_agents; i++) 
     {
