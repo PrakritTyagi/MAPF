@@ -4,6 +4,7 @@
 #include "ActionModel.h"
 #include <unordered_set>
 
+
 // Define a structure to represent a conflict
 struct conflict {
     int agent1;
@@ -60,4 +61,6 @@ public:
     std::vector<std::vector<int>> combinations(const std::vector<int>& arr, int k);
     conflict findVertexConflicts(const std::vector<std::list<std::pair<int, int>>>& paths); 
     conflict findEdgeConflicts(const std::vector<std::list<std::pair<int, int>>>& paths);
+    int convertToSingleInt(int x, int y);
+    std::pair<int, int> convertToPair(int singleInt);
 };

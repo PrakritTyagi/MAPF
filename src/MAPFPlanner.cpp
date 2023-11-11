@@ -351,3 +351,17 @@ conflict MAPFPlanner::findEdgeConflicts(const std::vector<std::list<std::pair<in
     return conflict();
 }
 
+//Create a function to convert x and y coordinates to a single integer for a map represented as a vector]
+int MAPFPlanner::convertToSingleInt(int x, int y)
+{
+    return x*env->cols + y;
+}
+
+// Create a function to convert a single integer to x and y coordinates for a map represented as a vector
+std::pair<int, int> MAPFPlanner::convertToPair(int singleInt)
+{
+    int x = singleInt/env->cols;
+    int y = singleInt%env->cols;
+    return std::make_pair(x, y);
+}
+
