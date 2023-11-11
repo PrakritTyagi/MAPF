@@ -16,12 +16,7 @@ struct AstarNode
         location(_location), direction(_direction),f(_g+_h),g(_g),h(_h),t(_t),parent(_parent) {}
 };
 
-struct constraint_format{
-    public:
-    int agent_id,t, vertex_1, vertex_2;
-    constraint_format(int _agent_id, int _vertex_1, int _vertex_2, int t): agent_id(_agent_id), vertex_1(_vertex_1), vertex_2(_vertex_2), t(t) {}
-    constraint_format(int _agent_id, int _vertex_1, int t): agent_id(_agent_id), vertex_1(_vertex_1), t(t) {}
-};
+
 
 
 struct cmp
