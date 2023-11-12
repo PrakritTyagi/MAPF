@@ -2,6 +2,34 @@
 #include <ctime>
 #include "SharedEnv.h"
 #include "ActionModel.h"
+#include <unordered_set>
+
+
+// Define a structure to represent a conflict
+struct conflict {
+    int agent1;
+    int agent2;
+    std::pair<int, int> vertex1;
+    std::pair<int, int> vertex2;
+    int timestep;
+
+    // Default constructor
+    conflict() : agent1(-1), agent2(-1), vertex1(std::make_pair(-1, -1)), vertex2(std::make_pair(-1, -1)), timestep(-1) {}
+    
+    // Vertex Conflict constructor
+    conflict(int a1, int a2, std::pair<int, int> _vertex1, int t) : agent1(a1), agent2(a2), vertex1(_vertex1), timestep(t) {
+        vertex2 = std::make_pair(-1, -1);
+    }
+
+    // Edge Conflict constructor
+    conflict(int a1, int a2, std::pair<int, int> _vertex1, std::pair<int, int> _vertex2, int t) : agent1(a1), agent2(a2), vertex1(_vertex1), vertex2(_vertex2), timestep(t) {}
+};
+
+struct conflictEqual {
+    bool operator()(const conflict& a, const conflict& b) const {
+        return a.agent1 == b.agent1 && a.agent2 == b.agent2 && a.timestep == b.timestep;
+    }
+};
 
 struct constraint_format{
     int agent_id,t, vertex_1, vertex_2;
@@ -38,6 +66,9 @@ public:
     // return next states for all agents
     virtual void plan(int time_limit, std::vector<Action> & plan);
 
+    // CBS implementation function
+    virtual void naive_CBS();
+
     // Start kit dummy implementation
     std::list<pair<int,int>>single_agent_plan(int start,int start_direct, int end, vector<constraint_format> constraints);
     int getManhattanDistance(int loc1, int loc2);
@@ -45,6 +76,44 @@ public:
     bool found_node(vector<constraint_format> constraints, AstarNode* node);
     std::list<pair<int,int>> getNeighbors(int location, int direction);
     bool validateMove(int loc,int loc2);
+
+    //My work
+    int Node_cost(std::vector<std::list<std::pair<int, int>>>& paths);
+
+    void combinationsUtil(const std::vector<int>& arr, std::vector<std::vector<int>>& result, std::vector<int>& combination, int start, int end, int index, int k); 
+    std::vector<std::vector<int>> combinations(const std::vector<int>& arr, int k);
+    conflict findVertexConflicts(const std::vector<std::list<std::pair<int, int>>>& paths); 
+    conflict findEdgeConflicts(const std::vector<std::list<std::pair<int, int>>>& paths);
+    int convertToSingleInt(int x, int y);
+    std::pair<int, int> convertToPair(int singleInt);
 };
 
+/**
+ * @class CT_node
+ * @brief Constraint Tree Node
+ * 
+*/
+class CT_node
+{
+private:
+    /* data */
+public:
 
+    // store constraint : vector of tuple<agent_id, map_index, time_step> 
+    vector<tuple<int,int,int>> constraints;
+    // solution basically list of list pair<int,int> where pair is index and direction
+    list<list<pair<int,int>>> solution;
+    // sum-of-cost // float or int
+    int sum_of_cost;
+
+    // parent pointer
+    std::shared_ptr<CT_node> parent_ptr;
+    // right pointer 
+    std::shared_ptr<CT_node> right_ptr;
+    // left pointer
+    std::shared_ptr<CT_node> left_ptr;
+
+
+    CT_node(/* args */);
+    ~CT_node();
+};
