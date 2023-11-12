@@ -1,7 +1,5 @@
 #include <MAPFPlanner.h>
 #include <random>
-#include <unordered_set>
-
 
 /**
  * @fn CT_node constructor
@@ -72,29 +70,6 @@ void MAPFPlanner::naive_CBS()
 }
 
 
-
-
-
-
-
-
-
-
-
-struct AstarNode
-{
-    int location;
-    int direction;
-    int f,g,h;
-    AstarNode* parent;
-    int t = 0;
-    bool closed = false;
-    AstarNode(int _location,int _direction, int _g, int _h, AstarNode* _parent):
-        location(_location), direction(_direction),f(_g+_h),g(_g),h(_h),parent(_parent) {}
-    AstarNode(int _location,int _direction, int _g, int _h, int _t, AstarNode* _parent):
-        location(_location), direction(_direction),f(_g+_h),g(_g),h(_h),t(_t),parent(_parent) {}
-};
-
 struct cmp
 {
     bool operator()(AstarNode* a, AstarNode* b)
@@ -115,11 +90,19 @@ void MAPFPlanner::initialize(int preprocess_time_limit)
     cout << "planner initialize done" << endl;
 }
 
+int MAPFPlanner::sum_of_costs(vector<list<pair<int,int>>> paths){
+    int sum = 0;
+    for(auto path: paths){
+        sum += path.size();
+    }
+    return sum;
+
+}
 
 // plan using simple A* that ignores the time dimension
 void MAPFPlanner::plan(int time_limit,vector<Action> & actions) 
-{
-
+{   
+    constraint_format c1(0, 0, 1, 0);
     actions = std::vector<Action>(env->curr_states.size(), Action::W);
     for (int i = 0; i < env->num_of_agents; i++) 
     {
@@ -132,7 +115,7 @@ void MAPFPlanner::plan(int time_limit,vector<Action> & actions)
         {
             path = single_agent_plan(env->curr_states[i].location,
                                     env->curr_states[i].orientation,
-                                    env->goal_locations[i].front().first);
+                                    env->goal_locations[i].front().first, {c1});
         }
         if (path.front().first != env->curr_states[i].location)
         {
@@ -157,8 +140,16 @@ void MAPFPlanner::plan(int time_limit,vector<Action> & actions)
   return;
 }
 
+bool MAPFPlanner::found_node(vector<constraint_format> constraints, AstarNode* node){
+    for(auto n: constraints){
+        if(n.vertex_1 ==node->location && n.t==node->t){
+            return true;
+        }
+    }
+    return false;
+}
 
-list<pair<int,int>> MAPFPlanner::single_agent_plan(int start,int start_direct,int end)
+list<pair<int,int>> MAPFPlanner::single_agent_plan(int start,int start_direct,int end, vector<constraint_format> constraints)
 {
     list<pair<int,int>> path;
     priority_queue<AstarNode*,vector<AstarNode*>,cmp> open_list;
@@ -188,20 +179,27 @@ list<pair<int,int>> MAPFPlanner::single_agent_plan(int start,int start_direct,in
             if (close_list.find(neighbor.first*4 + neighbor.second) != close_list.end())
                 continue;
             if (all_nodes.find(neighbor.first*4 + neighbor.second) != all_nodes.end())
-            {
+            {   
                 AstarNode* old = all_nodes[neighbor.first*4 + neighbor.second];
                 if (curr->g + 1 < old->g)
-                {
+        
+                {   AstarNode node(old->location,old->direction,curr->g+1,old->h+curr->g+1,curr->t+1,curr);
+                    if(!found_node(constraints, &node)){ 
                     old->g = curr->g+1;
                     old->f = old->h+old->g;
                     old->parent = curr;
+                    old->t=curr->t+1;
+                    }
                 }
             }
             else
-            {
+            {   
+                
                 AstarNode* next_node = new AstarNode(neighbor.first, neighbor.second,
-                    curr->g+1,getManhattanDistance(neighbor.first,end), curr);
-                open_list.push(next_node);
+                    curr->g+1,getManhattanDistance(neighbor.first,end),curr->t ,curr);
+                if(!found_node(constraints, next_node)){
+                    open_list.push(next_node);
+                }
                 all_nodes[neighbor.first*4+neighbor.second] = next_node;
             }
         }
