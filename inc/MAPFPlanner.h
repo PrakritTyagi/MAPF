@@ -54,7 +54,6 @@ public:
     bool validateMove(int loc,int loc2);
 
     //My work
-    void getMAPFPlan(vector<State> & curr_states, vector<vector<pair<int,int>>> & paths, int time_limit);
     int Node_cost(std::vector<std::list<std::pair<int, int>>>& paths);
 
     void combinationsUtil(const std::vector<int>& arr, std::vector<std::vector<int>>& result, std::vector<int>& combination, int start, int end, int index, int k); 
