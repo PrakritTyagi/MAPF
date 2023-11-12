@@ -37,106 +37,40 @@ void MAPFPlanner::initialize(int preprocess_time_limit)
 // plan using simple A* that ignores the time dimension
 void MAPFPlanner::plan(int time_limit,vector<Action> & actions) 
 {
+
     actions = std::vector<Action>(env->curr_states.size(), Action::W);
-    std::vector<std::list<std::pair<int, int>>> paths;
-    for (int i = 0; i < env->num_of_agents; i++) {
-        paths.push_back(single_agent_plan(env->curr_states[i].location,
-                                            env->curr_states[i].orientation,
-                                            env->goal_locations[i].empty() ? env->curr_states[i].location : env->goal_locations[i].front().first));
-    }
-    // std::cout << "Paths Found!" << std::endl;
-    // Detect conflicts at the current timestep
-    // std::unordered_set<conflict, conflictHash, conflictEqual> conflicts = detectConflicts(paths,timestep);
-
-    // Resolve conflicts using CBS (or other conflict resolution method)
-    // resolveConflicts(paths, conflicts);
-    // std::cout << "Conflicts Resolved!" << std::endl;
-
-    // Go through the paths and find the conflicts and resolve them
-
-    // Resolve conflicts using CBS (or other conflict resolution method)
-    // std::cout << "Conflicts Resolved!" << std::endl;
-
-    // Update the actions based on the resolved paths
-    for (int i = 0; i < env->num_of_agents; i++) {
-        if (!paths[i].empty()) {
-            std::pair<int, int> next_position = paths[i].front();
-
-            if (next_position.first != env->curr_states[i].location) {
-                actions[i] = Action::FW;
-            } else if (next_position.second != env->curr_states[i].orientation) {
-                int incr = next_position.second - env->curr_states[i].orientation;
-                if (incr == 1 || incr == -3) {
-                    actions[i] = Action::CR;
-                } else if (incr == -1 || incr == 3) {
-                    actions[i] = Action::CCR;
-                }
-            }
+    for (int i = 0; i < env->num_of_agents; i++) 
+    {
+        list<pair<int,int>> path;
+        if (env->goal_locations[i].empty()) 
+        {
+            path.push_back({env->curr_states[i].location, env->curr_states[i].orientation});
+        } 
+        else 
+        {
+            path = single_agent_plan(env->curr_states[i].location,
+                                    env->curr_states[i].orientation,
+                                    env->goal_locations[i].front().first);
         }
+        if (path.front().first != env->curr_states[i].location)
+        {
+            actions[i] = Action::FW; //forward action
+        } 
+        else if (path.front().second!= env->curr_states[i].orientation)
+        {
+            int incr = path.front().second - env->curr_states[i].orientation;
+            if (incr == 1 || incr == -3)
+            {
+                actions[i] = Action::CR; //C--counter clockwise rotate
+            } 
+            else if (incr == -1 || incr == 3)
+            {
+                actions[i] = Action::CCR; //CCR--clockwise rotate
+            } 
+        }
+    
     }
 
-    // actions = std::vector<Action>(env->curr_states.size(), Action::W);
-    // for (int i = 0; i < env->num_of_agents; i++) 
-    // {
-    //     list<pair<int,int>> path;
-    //     if (env->goal_locations[i].empty()) 
-    //     {
-    //         path.push_back({env->curr_states[i].location, env->curr_states[i].orientation});
-    //     } 
-    //     else 
-    //     {
-    //         path = single_agent_plan(env->curr_states[i].location,
-    //                                 env->curr_states[i].orientation,
-    //                                 env->goal_locations[i].front().first);
-    //     }
-    //     if (path.front().first != env->curr_states[i].location)
-    //     {
-    //         actions[i] = Action::FW; //forward action
-    //     } 
-    //     else if (path.front().second!= env->curr_states[i].orientation)
-    //     {
-    //         int incr = path.front().second - env->curr_states[i].orientation;
-    //         if (incr == 1 || incr == -3)
-    //         {
-    //             actions[i] = Action::CR; //C--counter clockwise rotate
-    //         } 
-    //         else if (incr == -1 || incr == 3)
-    //         {
-    //             actions[i] = Action::CCR; //CCR--clockwise rotate
-    //         } 
-    //     }
-    
-    // }
-
-
-    // Implement the getMAPF function here
-    // vector<vector<pair<int,int>>> paths;
-    // getMAPFPlan(env->curr_states, paths, time_limit);
-    // for (int i = 0; i < env->num_of_agents; i++) 
-    // {
-    //     if (!paths[i].empty()) 
-    //     {
-    //         std::pair<int, int> next_position = paths[i].front();
-
-    //         if (next_position.first != env->curr_states[i].location) 
-    //         {
-    //             actions[i] = Action::FW;
-    //         } 
-    //         else if (next_position.second != env->curr_states[i].orientation) 
-    //         {
-    //             int incr = next_position.second - env->curr_states[i].orientation;
-    //             if (incr == 1 || incr == -3) 
-    //             {
-    //                 actions[i] = Action::CR;
-    //             } 
-    //             else if (incr == -1 || incr == 3) 
-    //             {
-    //                 actions[i] = Action::CCR;
-    //             }
-    //         }
-    //     }
-    // }
-    
     
   return;
 }
