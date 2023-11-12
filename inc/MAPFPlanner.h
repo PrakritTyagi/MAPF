@@ -75,6 +75,7 @@ public:
     // Start kit dummy implementation
     std::list<pair<int,int>>single_agent_plan(int start,int start_direct, int end, vector<constraint_format> constraints);
     int getManhattanDistance(int loc1, int loc2);
+    
     int sum_of_costs(vector<list<pair<int,int>>> paths);
     bool found_node(vector<constraint_format> constraints, AstarNode* node);
     std::list<pair<int,int>> getNeighbors(int location, int direction);
@@ -104,11 +105,11 @@ private:
 public:
 
     // store constraint : vector of tuple<agent_id, map_index, time_step> 
-    vector<tuple<int,int,int>> constraints;
+    vector<constraint_format> node_constraints;
     // solution basically list of list pair<int,int> where pair is index and direction
-    list<list<pair<int,int>>> solution;
+    vector<list<pair<int,int>>> node_solution;
     // sum-of-cost // float or int
-    int sum_of_cost;
+    int SOC;
 
     // parent pointer
     std::shared_ptr<CT_node> parent_ptr;

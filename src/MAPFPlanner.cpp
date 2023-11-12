@@ -7,12 +7,29 @@
 */
 CT_node::CT_node(/* args */)
 {
+    this->parent_ptr = nullptr;
+    this->right_ptr = nullptr;
+    this->left_ptr = nullptr;
+    this->SOC = 0;
+    this->node_constraints = {};
+    this->node_solution = {};
 }
 
 CT_node::~CT_node()
 {
 }
 
+/**
+ * @fn Contraint tree open list comparator
+ * @brief Compare two CT_nodes based on their sum-of-cost
+*/
+struct CT_CMP
+{
+    bool operator()(std::shared_ptr<CT_node> a, std::shared_ptr<CT_node> b)
+    {
+        return a->SOC > b->SOC;
+    }
+};
 
 /**
  * @fn CBS functions
@@ -20,13 +37,12 @@ CT_node::~CT_node()
 */
 void MAPFPlanner::naive_CBS()
 {
-    constraint_format c1(0, 0, 1, 0);
     // create a root node with empty constraint variable
     std::shared_ptr<CT_node> root_node = std::make_shared<CT_node>();
 
-    // calculate paths for all agents using A*(heuristics are already calculated in initialize function)
+    // calculate paths for all agents using A*(TODO: heuristics are already calculated in initialize function)
     // store it the root node
-    list<list<pair<int,int>>> solution;
+    vector<list<pair<int,int>>> solution;
     for (int i = 0; i < env->num_of_agents; i++) 
     {
         list<pair<int,int>> path;
@@ -38,38 +54,69 @@ void MAPFPlanner::naive_CBS()
         {
             path = single_agent_plan(env->curr_states[i].location,
                                     env->curr_states[i].orientation,
-                                    env->goal_locations[i].front().first, {c1});
+                                    env->goal_locations[i].front().first, root_node->node_constraints);
         }
         solution.push_back(path);
     }
-    root_node->solution = solution;
-    
+    root_node->node_solution = solution;
     
     // calculate sum-of-cost and store it in root node
+    root_node->SOC = sum_of_costs(root_node->node_solution);
 
+    priority_queue<std::shared_ptr<CT_node>,vector<std::shared_ptr<CT_node>>,CT_CMP> OPEN_LIST;
+    OPEN_LIST.push(root_node);
     // while loop till open_list is empty
+    while (!OPEN_LIST.empty())
+    {
         // pop the best CT_node with lowest sum-of-cost (create a comparator function to compare CT_nodes)
-        
+        std::shared_ptr<CT_node> curr_node = OPEN_LIST.top();
         // check for conflicts in the paths (create a conflict finding function)
-
+        conflict CONFLICT = findVertexConflicts(curr_node->node_solution);
         // if no conflict, return the solution as this is the goal
+        if (CONFLICT.agent1 == -1 && CONFLICT.agent2 == -1) 
+        {
+            conflict CONFLICT = findEdgeConflicts(curr_node->node_solution);
+            if (CONFLICT.agent1 == -1 && CONFLICT.agent2 == -1) 
+            {
+                // return the solution
+                cout << "Solution found" << endl;
+                return;
+            }
+        }
+        // if conflict, create two new CT_nodes
+        // first node
+        std::shared_ptr<CT_node> left_node = std::make_shared<CT_node>();
+        curr_node->left_ptr = left_node;
+        left_node->node_constraints = curr_node->node_constraints;
+        left_node->node_constraints.push_back(convertToConstraint(CONFLICT));
+        left_node->node_solution = curr_node->node_solution;
+        list<pair<int,int>> new_path = single_agent_plan(env->curr_states[CONFLICT.agent1].location,
+                                    env->curr_states[CONFLICT.agent1].orientation,
+                                    env->goal_locations[CONFLICT.agent1].front().first, left_node->node_constraints);
+        left_node->node_solution[CONFLICT.agent1] = new_path;
+        left_node->SOC = sum_of_costs(left_node->node_solution);
+        left_node->parent_ptr = curr_node;
 
-        // for each conflict
-            // create new CT_nodes 
+        // second node
+        std::shared_ptr<CT_node> right_node = std::make_shared<CT_node>();
+        curr_node->right_ptr = right_node;
+        right_node->node_constraints = curr_node->node_constraints;
+        right_node->node_constraints.push_back(convertToConstraint(CONFLICT));
+        right_node->node_solution = curr_node->node_solution;
+        new_path = single_agent_plan(env->curr_states[CONFLICT.agent2].location,
+                                    env->curr_states[CONFLICT.agent2].orientation,
+                                    env->goal_locations[CONFLICT.agent2].front().first, right_node->node_constraints);
+        right_node->node_solution[CONFLICT.agent2] = new_path;
+        right_node->SOC = sum_of_costs(right_node->node_solution);
+        right_node->parent_ptr = curr_node;
 
-            // add the constraint to the new CT_nodes, which is Parent CT_node's constraint + conflict
-
-            // calculate path for only this agent
-            // copy solution from parent CT_node to new CT_node
-            // update the solution in new CT_node
-            
-            // calculate sum-of-cost and store it in new CT_node
-            // if cost is less than infinity
-                // push the new CT_nodes in open_list
-
-
+        // push the two new CT_nodes in open_list
+        if(left_node->SOC < INT64_MAX)
+            OPEN_LIST.push(left_node);
+        if(right_node->SOC < INT64_MAX)
+            OPEN_LIST.push(right_node);
+    }
 }
-
 
 struct cmp
 {
