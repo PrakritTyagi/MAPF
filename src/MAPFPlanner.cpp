@@ -20,6 +20,7 @@ CT_node::~CT_node()
 */
 void MAPFPlanner::naive_CBS()
 {
+    constraint_format c1(0, 0, 1, 0);
     // create a root node with empty constraint variable
     std::shared_ptr<CT_node> root_node = std::make_shared<CT_node>();
 
@@ -37,7 +38,7 @@ void MAPFPlanner::naive_CBS()
         {
             path = single_agent_plan(env->curr_states[i].location,
                                     env->curr_states[i].orientation,
-                                    env->goal_locations[i].front().first);
+                                    env->goal_locations[i].front().first, {c1});
         }
         solution.push_back(path);
     }

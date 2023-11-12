@@ -2,7 +2,6 @@
 #include <ctime>
 #include "SharedEnv.h"
 #include "ActionModel.h"
-#include <unordered_set>
 
 
 // Define a structure to represent a conflict
