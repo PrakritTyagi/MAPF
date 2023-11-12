@@ -2,6 +2,84 @@
 #include <random>
 
 
+/**
+ * @fn CT_node constructor
+ * @brief Construct a new CT_node::CT_node object
+*/
+CT_node::CT_node(/* args */)
+{
+}
+
+CT_node::~CT_node()
+{
+}
+
+
+/**
+ * @fn CBS functions
+ * 
+*/
+void MAPFPlanner::naive_CBS()
+{
+    // create a root node with empty constraint variable
+    std::shared_ptr<CT_node> root_node = std::make_shared<CT_node>();
+
+    // calculate paths for all agents using A*(heuristics are already calculated in initialize function)
+    // store it the root node
+    list<list<pair<int,int>>> solution;
+    for (int i = 0; i < env->num_of_agents; i++) 
+    {
+        list<pair<int,int>> path;
+        if (env->goal_locations[i].empty()) 
+        {
+            path.push_back({env->curr_states[i].location, env->curr_states[i].orientation});
+        } 
+        else 
+        {
+            path = single_agent_plan(env->curr_states[i].location,
+                                    env->curr_states[i].orientation,
+                                    env->goal_locations[i].front().first);
+        }
+        solution.push_back(path);
+    }
+    root_node->solution = solution;
+    
+    
+    // calculate sum-of-cost and store it in root node
+
+    // while loop till open_list is empty
+        // pop the best CT_node with lowest sum-of-cost (create a comparator function to compare CT_nodes)
+        
+        // check for conflicts in the paths (create a conflict finding function)
+
+        // if no conflict, return the solution as this is the goal
+
+        // for each conflict
+            // create new CT_nodes 
+
+            // add the constraint to the new CT_nodes, which is Parent CT_node's constraint + conflict
+
+            // calculate path for only this agent
+            // copy solution from parent CT_node to new CT_node
+            // update the solution in new CT_node
+            
+            // calculate sum-of-cost and store it in new CT_node
+            // if cost is less than infinity
+                // push the new CT_nodes in open_list
+
+
+}
+
+
+
+
+
+
+
+
+
+
+
 struct AstarNode
 {
     int location;
@@ -30,6 +108,10 @@ struct cmp
 
 void MAPFPlanner::initialize(int preprocess_time_limit)
 {
+    cout << "****************************************************" << endl;
+    cout << "planner preprocess time limit: " << preprocess_time_limit << endl;
+
+    // calculate heuristic for all agents and store
     cout << "planner initialize done" << endl;
 }
 
