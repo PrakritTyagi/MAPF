@@ -1,5 +1,6 @@
 #include <MAPFPlanner.h>
 #include <random>
+#include <unordered_set>
 
 
 /**
@@ -94,7 +95,6 @@ struct AstarNode
         location(_location), direction(_direction),f(_g+_h),g(_g),h(_h),t(_t),parent(_parent) {}
 };
 
-
 struct cmp
 {
     bool operator()(AstarNode* a, AstarNode* b)
@@ -119,6 +119,7 @@ void MAPFPlanner::initialize(int preprocess_time_limit)
 // plan using simple A* that ignores the time dimension
 void MAPFPlanner::plan(int time_limit,vector<Action> & actions) 
 {
+
     actions = std::vector<Action>(env->curr_states.size(), Action::W);
     for (int i = 0; i < env->num_of_agents; i++) 
     {
@@ -149,8 +150,10 @@ void MAPFPlanner::plan(int time_limit,vector<Action> & actions)
                 actions[i] = Action::CCR; //CCR--clockwise rotate
             } 
         }
-
+    
     }
+
+    
   return;
 }
 
@@ -261,3 +264,120 @@ list<pair<int,int>> MAPFPlanner::getNeighbors(int location,int direction)
     neighbors.emplace_back(make_pair(location,direction)); //wait
     return neighbors;
 }
+
+// Resolve conflicts using CBS (or other conflict resolution method)
+
+int MAPFPlanner::Node_cost(std::vector<std::list<std::pair<int, int>>>& paths)
+{
+    // Return the cost which is the sum of the length of all the paths without using a loop
+    int cost = 0;
+    for (int i = 0; i < env->num_of_agents; i++) 
+    {
+        cost += paths[i].size();
+    }
+    return cost;
+}
+
+void MAPFPlanner::combinationsUtil(const std::vector<int>& arr, std::vector<std::vector<int>>& result, std::vector<int>& combination, int start, int end, int index, int k) 
+{
+    if (index == k) {
+        result.push_back(combination);
+        return;
+    }
+
+    for (int i = start; i <= end && end - i + 1 >= k - index; i++) {
+        combination[index] = arr[i];
+        combinationsUtil(arr, result, combination, i + 1, end, index + 1, k);
+    }
+}
+
+
+std::vector<std::vector<int>> MAPFPlanner::combinations(const std::vector<int>& arr, int k) {
+    std::vector<std::vector<int>> result;
+    std::vector<int> combination(k);
+    combinationsUtil(arr, result, combination, 0, arr.size() - 1, 0, k);
+    return result;
+}
+
+conflict MAPFPlanner::findVertexConflicts(const std::vector<std::list<std::pair<int, int>>>& paths) 
+{
+    std::vector<int> agentIndices(paths.size());
+    std::iota(agentIndices.begin(), agentIndices.end(), 0);  // Fill with 0, 1, ..., n-1
+
+    std::vector<std::vector<int>> agentCombinations = combinations(agentIndices, 2);
+
+    // Check conflicts for each combination of 2 agents
+    for (const auto& combination : agentCombinations) {
+        // In the combination, combination[0] is the first agent and combination[1] is the second agent
+        int agent1 = combination[0];
+        int agent2 = combination[1];
+
+        // Find the agent with the shorter path
+        int shorterAgent = (paths[agent1].size() < paths[agent2].size()) ? agent1 : agent2;
+        int longerAgent = (shorterAgent == agent1) ? agent2 : agent1;
+
+        // Run a loop of length equal to the length of the shorter path where ith element of both paths are checked if they are equal
+        for (int i = 0; i < paths[shorterAgent].size(); i++) 
+        {
+            // Create variable which hold the value of ith path element of both agents without using auto
+            std::pair<int, int> shorterAgentPathElement = *std::next(paths[shorterAgent].begin(), i);
+            // Check if the two agents are at the same location at the same timestep
+            if (*std::next(paths[shorterAgent].begin(), i) == *std::next(paths[longerAgent].begin(), i)) 
+            {
+                return conflict(shorterAgent, longerAgent, shorterAgentPathElement, i);
+            }
+        }
+
+    }
+    return conflict();
+}
+
+//create a function to get the first edge conflicts
+conflict MAPFPlanner::findEdgeConflicts(const std::vector<std::list<std::pair<int, int>>>& paths) 
+{
+    std::vector<int> agentIndices(paths.size());
+    std::vector<std::vector<int>> agentCombinations = combinations(agentIndices, 2);
+
+    // Check conflicts for each combination of 2 agents
+    for (const auto& combination : agentCombinations) {
+        // In the combination, combination[0] is the first agent and combination[1] is the second agent
+        int agent1 = combination[0];
+        int agent2 = combination[1];
+
+        // Find the agent with the shorter path
+        int shorterAgent = (paths[agent1].size() < paths[agent2].size()) ? agent1 : agent2;
+        int longerAgent = (shorterAgent == agent1) ? agent2 : agent1;
+
+        // Run a loop of length equal to the length of the shorter path where ith element of both paths are checked if they are equal
+        for (int i = 0; i < paths[shorterAgent].size()-1; i++) 
+        {
+            // Create variable which hold the value of ith and i+1th path element of both agents without using auto
+            std::pair<int, int> shorterAgentPath_Current = *std::next(paths[shorterAgent].begin(), i);
+            std::pair<int, int> shorterAgentPath_Next = *std::next(paths[shorterAgent].begin(), i+1);
+            std::pair<int, int> longerAgentPath_Current = *std::next(paths[longerAgent].begin(), i);
+            std::pair<int, int> longerAgentPath_Next = *std::next(paths[longerAgent].begin(), i+1);
+            // Check if the two agents are at the same location at the same timestep
+            if (shorterAgentPath_Current == longerAgentPath_Next && shorterAgentPath_Next == longerAgentPath_Current) 
+            {
+                return conflict(shorterAgent, longerAgent, shorterAgentPath_Current, longerAgentPath_Current, i);
+            }
+        }
+
+    }
+    return conflict();
+}
+
+//Create a function to convert x and y coordinates to a single integer for a map represented as a vector]
+int MAPFPlanner::convertToSingleInt(int x, int y)
+{
+    return x*env->cols + y;
+}
+
+// Create a function to convert a single integer to x and y coordinates for a map represented as a vector
+std::pair<int, int> MAPFPlanner::convertToPair(int singleInt)
+{
+    int x = singleInt/env->cols;
+    int y = singleInt%env->cols;
+    return std::make_pair(x, y);
+}
+
