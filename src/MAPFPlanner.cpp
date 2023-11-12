@@ -380,3 +380,16 @@ std::pair<int, int> MAPFPlanner::convertToPair(int singleInt)
     return std::make_pair(x, y);
 }
 
+// Function which takes in the an edge conflict and returns a constraint of the same
+constraint_format MAPFPlanner::convertToConstraint(conflict Conflict) 
+{
+    if (Conflict.vertex2.first == -1 && Conflict.vertex2.second == -1) // Check if the conflict is a vertex conflict
+    {
+        return constraint_format(Conflict.agent1, convertToSingleInt(Conflict.vertex1.first, Conflict.vertex1.second), Conflict.timestep);
+    } 
+    else // If the conflict is an edge conflict
+    {
+        return constraint_format(Conflict.agent1, convertToSingleInt(Conflict.vertex1.first, Conflict.vertex1.second), convertToSingleInt(Conflict.vertex2.first, Conflict.vertex2.second), Conflict.timestep);
+    }
+}
+
