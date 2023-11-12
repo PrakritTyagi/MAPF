@@ -143,8 +143,17 @@ void MAPFPlanner::plan(int time_limit,vector<Action> & actions)
 
 bool MAPFPlanner::found_node(vector<constraint_format> constraints, AstarNode* node){
     for(auto n: constraints){
-        if(n.vertex_1 ==node->location && n.t==node->t){
+        // If Vertex Constraint
+        if(n.vertex_2==-1){
+            if(n.vertex_1 ==node->location && n.t==node->t){
             return true;
+            }
+        }
+        // If Edge Constraint
+        else{
+            if((n.vertex_2 ==node->location && n.t+1==node->t) ||(n.vertex_1 ==node->location && n.t+1==node->t))  {
+            return true;
+            }
         }
     }
     return false;
