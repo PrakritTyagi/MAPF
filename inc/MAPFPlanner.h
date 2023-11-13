@@ -4,6 +4,8 @@
 #include "ActionModel.h"
 
 
+extern vector<list<pair<int,int>>> CBS_solution;
+
 // Define a structure to represent a conflict
 struct conflict {
     int agent1;

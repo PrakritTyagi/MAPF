@@ -1,6 +1,8 @@
 #include <MAPFPlanner.h>
 #include <random>
 
+vector<list<pair<int,int>>> CBS_solution;
+
 /**
  * @fn CT_node constructor
  * @brief Construct a new CT_node::CT_node object
@@ -70,6 +72,7 @@ void MAPFPlanner::naive_CBS()
     {
         // pop the best CT_node with lowest sum-of-cost (create a comparator function to compare CT_nodes)
         std::shared_ptr<CT_node> curr_node = OPEN_LIST.top();
+        OPEN_LIST.pop();
         // check for conflicts in the paths (create a conflict finding function)
         conflict CONFLICT = findVertexConflicts(curr_node->node_solution);
         // if no conflict, return the solution as this is the goal
@@ -80,6 +83,7 @@ void MAPFPlanner::naive_CBS()
             {
                 // return the solution
                 cout << "Solution found" << endl;
+                CBS_solution = curr_node->node_solution;
                 return;
             }
         }
@@ -135,7 +139,7 @@ void MAPFPlanner::initialize(int preprocess_time_limit)
 {
     cout << "****************************************************" << endl;
     cout << "planner preprocess time limit: " << preprocess_time_limit << endl;
-
+    this->naive_CBS();
     // calculate heuristic for all agents and store
     cout << "planner initialize done" << endl;
 }
@@ -152,7 +156,6 @@ int MAPFPlanner::sum_of_costs(vector<list<pair<int,int>>> paths){
 // plan using simple A* that ignores the time dimension
 void MAPFPlanner::plan(int time_limit,vector<Action> & actions) 
 {   
-    constraint_format c1(0, 0, 1, 0);
     actions = std::vector<Action>(env->curr_states.size(), Action::W);
     for (int i = 0; i < env->num_of_agents; i++) 
     {
@@ -163,9 +166,7 @@ void MAPFPlanner::plan(int time_limit,vector<Action> & actions)
         } 
         else 
         {
-            path = single_agent_plan(env->curr_states[i].location,
-                                    env->curr_states[i].orientation,
-                                    env->goal_locations[i].front().first, {c1});
+            path = CBS_solution[i];
         }
         if (path.front().first != env->curr_states[i].location)
         {
@@ -183,6 +184,7 @@ void MAPFPlanner::plan(int time_limit,vector<Action> & actions)
                 actions[i] = Action::CCR; //CCR--clockwise rotate
             } 
         }
+        CBS_solution[i].pop_front();
     
     }
 
