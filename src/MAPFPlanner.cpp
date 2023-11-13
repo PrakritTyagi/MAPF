@@ -85,14 +85,16 @@ void MAPFPlanner::naive_CBS()
         }
         // if conflict, create two new CT_nodes
         // first node
+        vector<constraint_format> current_constraint_stack = convertToConstraint(CONFLICT);
+
         std::shared_ptr<CT_node> left_node = std::make_shared<CT_node>();
         curr_node->left_ptr = left_node;
         left_node->node_constraints = curr_node->node_constraints;
-        left_node->node_constraints.push_back(convertToConstraint(CONFLICT));
+        left_node->node_constraints.push_back(current_constraint_stack[0]);
         left_node->node_solution = curr_node->node_solution;
         list<pair<int,int>> new_path = single_agent_plan(env->curr_states[CONFLICT.agent1].location,
                                     env->curr_states[CONFLICT.agent1].orientation,
-                                    env->goal_locations[CONFLICT.agent1].front().first, left_node->node_constraints);
+                                    env->goal_locations[CONFLICT.agent1].front().first, left_node->node_constraints); // TODO: current_constraint_Stack[0].agent_id
         left_node->node_solution[CONFLICT.agent1] = new_path;
         left_node->SOC = sum_of_costs(left_node->node_solution);
         left_node->parent_ptr = curr_node;
@@ -101,7 +103,7 @@ void MAPFPlanner::naive_CBS()
         std::shared_ptr<CT_node> right_node = std::make_shared<CT_node>();
         curr_node->right_ptr = right_node;
         right_node->node_constraints = curr_node->node_constraints;
-        right_node->node_constraints.push_back(convertToConstraint(CONFLICT));
+        right_node->node_constraints.push_back(current_constraint_stack[1]);
         right_node->node_solution = curr_node->node_solution;
         new_path = single_agent_plan(env->curr_states[CONFLICT.agent2].location,
                                     env->curr_states[CONFLICT.agent2].orientation,
@@ -322,16 +324,6 @@ list<pair<int,int>> MAPFPlanner::getNeighbors(int location,int direction)
 
 // Resolve conflicts using CBS (or other conflict resolution method)
 
-int MAPFPlanner::Node_cost(std::vector<std::list<std::pair<int, int>>>& paths)
-{
-    // Return the cost which is the sum of the length of all the paths without using a loop
-    int cost = 0;
-    for (int i = 0; i < env->num_of_agents; i++) 
-    {
-        cost += paths[i].size();
-    }
-    return cost;
-}
 
 void MAPFPlanner::combinationsUtil(const std::vector<int>& arr, std::vector<std::vector<int>>& result, std::vector<int>& combination, int start, int end, int index, int k) 
 {
@@ -376,10 +368,11 @@ conflict MAPFPlanner::findVertexConflicts(const std::vector<std::list<std::pair<
         {
             // Create variable which hold the value of ith path element of both agents without using auto
             std::pair<int, int> shorterAgentPathElement = *std::next(paths[shorterAgent].begin(), i);
+            std::pair<int, int> longerAgentPathElement = *std::next(paths[longerAgent].begin(), i);
             // Check if the two agents are at the same location at the same timestep
-            if (*std::next(paths[shorterAgent].begin(), i) == *std::next(paths[longerAgent].begin(), i)) 
+            if (shorterAgentPathElement.first == longerAgentPathElement.first) 
             {
-                return conflict(shorterAgent, longerAgent, shorterAgentPathElement, i);
+                return conflict(shorterAgent, longerAgent, shorterAgentPathElement.first, i);
             }
         }
 
@@ -412,9 +405,9 @@ conflict MAPFPlanner::findEdgeConflicts(const std::vector<std::list<std::pair<in
             std::pair<int, int> longerAgentPath_Current = *std::next(paths[longerAgent].begin(), i);
             std::pair<int, int> longerAgentPath_Next = *std::next(paths[longerAgent].begin(), i+1);
             // Check if the two agents are at the same location at the same timestep
-            if (shorterAgentPath_Current == longerAgentPath_Next && shorterAgentPath_Next == longerAgentPath_Current) 
+            if (shorterAgentPath_Current.first == longerAgentPath_Next.first && shorterAgentPath_Next.first == longerAgentPath_Current.first) 
             {
-                return conflict(shorterAgent, longerAgent, shorterAgentPath_Current, longerAgentPath_Current, i);
+                return conflict(shorterAgent, longerAgent, shorterAgentPath_Current.first, longerAgentPath_Current.first, i);
             }
         }
 
@@ -438,18 +431,17 @@ std::pair<int, int> MAPFPlanner::convertToPair(int singleInt)
 
 // Function which takes in the an edge conflict and returns a constraint of the same
 vector<constraint_format> MAPFPlanner::convertToConstraint(conflict Conflict) 
-{   
+{
     vector<constraint_format> constraints;
-    if (Conflict.vertex2.first == -1 && Conflict.vertex2.second == -1) // Check if the conflict is a vertex conflict
+    if (Conflict.vertex2 == -1) // Check if the conflict is a vertex conflict
     {
-        constraints.push_back(constraint_format(Conflict.agent1, convertToSingleInt(Conflict.vertex1.first, Conflict.vertex1.second), Conflict.timestep));
-        constraints.push_back(constraint_format(Conflict.agent2, convertToSingleInt(Conflict.vertex1.first, Conflict.vertex1.second), Conflict.timestep));
-
+        constraints.push_back(constraint_format(Conflict.agent1, Conflict.vertex1, Conflict.timestep));
+        constraints.push_back(constraint_format(Conflict.agent2, Conflict.vertex1, Conflict.timestep));
     } 
     else // If the conflict is an edge conflict
     {
-        constraints.push_back(constraint_format(Conflict.agent1, convertToSingleInt(Conflict.vertex1.first, Conflict.vertex1.second), convertToSingleInt(Conflict.vertex2.first, Conflict.vertex2.second), Conflict.timestep));
-        constraints.push_back(constraint_format(Conflict.agent2, convertToSingleInt(Conflict.vertex1.first, Conflict.vertex1.second), convertToSingleInt(Conflict.vertex2.first, Conflict.vertex2.second), Conflict.timestep));
+        constraints.push_back(constraint_format(Conflict.agent1, Conflict.vertex1, Conflict.vertex2, Conflict.timestep));
+        constraints.push_back(constraint_format(Conflict.agent2, Conflict.vertex1, Conflict.vertex2, Conflict.timestep));
     }
     return constraints;
 }

@@ -8,20 +8,20 @@
 struct conflict {
     int agent1;
     int agent2;
-    std::pair<int, int> vertex1;
-    std::pair<int, int> vertex2;
+    int vertex1;
+    int vertex2;
     int timestep;
 
     // Default constructor
-    conflict() : agent1(-1), agent2(-1), vertex1(std::make_pair(-1, -1)), vertex2(std::make_pair(-1, -1)), timestep(-1) {}
+    conflict() : agent1(-1), agent2(-1), vertex1(-1), vertex2(-1), timestep(-1) {}
     
     // Vertex Conflict constructor
-    conflict(int a1, int a2, std::pair<int, int> _vertex1, int t) : agent1(a1), agent2(a2), vertex1(_vertex1), timestep(t) {
-        vertex2 = std::make_pair(-1, -1);
+    conflict(int a1, int a2, int _vertex1, int t) : agent1(a1), agent2(a2), vertex1(_vertex1), timestep(t) {
+        vertex2 = -1;
     }
 
     // Edge Conflict constructor
-    conflict(int a1, int a2, std::pair<int, int> _vertex1, std::pair<int, int> _vertex2, int t) : agent1(a1), agent2(a2), vertex1(_vertex1), vertex2(_vertex2), timestep(t) {}
+    conflict(int a1, int a2, int _vertex1, int _vertex2, int t) : agent1(a1), agent2(a2), vertex1(_vertex1), vertex2(_vertex2), timestep(t) {}
 };
 
 struct conflictEqual {
@@ -82,7 +82,6 @@ public:
     bool validateMove(int loc,int loc2);
 
     //My work
-    int Node_cost(std::vector<std::list<std::pair<int, int>>>& paths);
 
     void combinationsUtil(const std::vector<int>& arr, std::vector<std::vector<int>>& result, std::vector<int>& combination, int start, int end, int index, int k); 
     std::vector<std::vector<int>> combinations(const std::vector<int>& arr, int k);
