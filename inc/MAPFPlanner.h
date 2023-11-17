@@ -92,6 +92,10 @@ public:
     int convertToSingleInt(int x, int y);
     std::pair<int, int> convertToPair(int singleInt);
     vector<constraint_format> convertToConstraint(conflict edgeConflict);
+
+    list<conflict> findVertexConflictsList(const std::vector<std::list<std::pair<int, int>>>& paths);
+
+    std::vector<std::pair<int, int>> generateCombinations(int n);
 };
 
 /**
