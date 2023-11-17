@@ -141,8 +141,7 @@ void MAPFPlanner::initialize(int preprocess_time_limit)
 {
     cout << "****************************************************" << endl;
     cout << "planner preprocess time limit: " << preprocess_time_limit << endl;
-    naive_CBS() ;
-    // this->naive_CBS();
+    
     // calculate heuristic for all agents and store
     cout << "planner initialize done" << endl;
 }
@@ -159,7 +158,13 @@ int MAPFPlanner::sum_of_costs(vector<list<pair<int,int>>> paths){
 // plan using simple A* that ignores the time dimension
 void MAPFPlanner::plan(int time_limit,vector<Action> & actions) 
 {   
-    // naive_CBS() ;
+    static bool run_cbs=true;
+    if(run_cbs){
+        cout<<"ghussa";
+        naive_CBS() ;
+        run_cbs=false;
+    }
+    
     actions = std::vector<Action>(env->curr_states.size(), Action::W);
     for (int i = 0; i < env->num_of_agents; i++) 
     {
