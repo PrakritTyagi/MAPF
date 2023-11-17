@@ -38,23 +38,23 @@ struct CT_CMP
  * 
 */
 void MAPFPlanner::naive_CBS()
-{   cout<<"0";
+{   
     // create a root node with empty constraint variable
     std::shared_ptr<CT_node> root_node = std::make_shared<CT_node>();
 
     // calculate paths for all agents using A*(TODO: heuristics are already calculated in initialize function)
     // store it the root node
     vector<list<pair<int,int>>> solution;
-    cout<<"1";
+    cout<<"Generating Initial Solution for agents"<<endl;
     for (int i = 0; i < env->num_of_agents; i++) 
-    {   cout<<"2";
+    {   
         list<pair<int,int>> path;
         if (env->goal_locations[i].empty()) 
         {
             path.push_back({env->curr_states[i].location, env->curr_states[i].orientation});
         } 
         else 
-        {   cout<<"3";
+        {
             path = single_agent_plan(env->curr_states[i].location,
                                     env->curr_states[i].orientation,
                                     env->goal_locations[i].front().first, root_node->node_constraints);
@@ -62,19 +62,20 @@ void MAPFPlanner::naive_CBS()
         solution.push_back(path);
     }
     root_node->node_solution = solution;
-    
+    printf("Initial Solution Generated -> Size of solution vector %ld \n",root_node->node_solution.size());
     // calculate sum-of-cost and store it in root node
     root_node->SOC = sum_of_costs(root_node->node_solution);
-    cout<<"4";
+    
     priority_queue<std::shared_ptr<CT_node>,vector<std::shared_ptr<CT_node>>,CT_CMP> OPEN_LIST;
     OPEN_LIST.push(root_node);
     // while loop till open_list is empty
     while (!OPEN_LIST.empty())
     {   
-        // cout<<"5";
+        printf("OPEN_LIST size %ld \n",OPEN_LIST.size());
         // pop the best CT_node with lowest sum-of-cost (create a comparator function to compare CT_nodes)
         std::shared_ptr<CT_node> curr_node = OPEN_LIST.top();
         OPEN_LIST.pop();
+
         // check for conflicts in the paths (create a conflict finding function)
         conflict CONFLICT = findVertexConflicts(curr_node->node_solution);
         // if no conflict, return the solution as this is the goal
@@ -123,6 +124,10 @@ void MAPFPlanner::naive_CBS()
             OPEN_LIST.push(left_node);
         if(right_node->SOC < INT64_MAX)
             OPEN_LIST.push(right_node);
+
+        // Empty the current node's solution and constraints to free up memory
+        curr_node->node_constraints.clear();
+        curr_node->node_solution.clear();
     }
 }
 
@@ -160,11 +165,13 @@ void MAPFPlanner::plan(int time_limit,vector<Action> & actions)
 {   
     static bool run_cbs=true;
     if(run_cbs){
-        cout<<"ghussa";
+        cout<<"Entering Planner"<<endl;
         naive_CBS() ;
         run_cbs=false;
+        cout<<"Exiting Planner"<<endl;
     }
-    
+    else
+        cout<<"Using existing CBS solution"<<endl;
     actions = std::vector<Action>(env->curr_states.size(), Action::W);
     for (int i = 0; i < env->num_of_agents; i++) 
     {
