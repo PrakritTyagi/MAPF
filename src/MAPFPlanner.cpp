@@ -38,22 +38,23 @@ struct CT_CMP
  * 
 */
 void MAPFPlanner::naive_CBS()
-{
+{   cout<<"0";
     // create a root node with empty constraint variable
     std::shared_ptr<CT_node> root_node = std::make_shared<CT_node>();
 
     // calculate paths for all agents using A*(TODO: heuristics are already calculated in initialize function)
     // store it the root node
     vector<list<pair<int,int>>> solution;
+    cout<<"1";
     for (int i = 0; i < env->num_of_agents; i++) 
-    {
+    {   cout<<"2";
         list<pair<int,int>> path;
         if (env->goal_locations[i].empty()) 
         {
             path.push_back({env->curr_states[i].location, env->curr_states[i].orientation});
         } 
         else 
-        {
+        {   cout<<"3";
             path = single_agent_plan(env->curr_states[i].location,
                                     env->curr_states[i].orientation,
                                     env->goal_locations[i].front().first, root_node->node_constraints);
@@ -64,12 +65,13 @@ void MAPFPlanner::naive_CBS()
     
     // calculate sum-of-cost and store it in root node
     root_node->SOC = sum_of_costs(root_node->node_solution);
-
+    cout<<"4";
     priority_queue<std::shared_ptr<CT_node>,vector<std::shared_ptr<CT_node>>,CT_CMP> OPEN_LIST;
     OPEN_LIST.push(root_node);
     // while loop till open_list is empty
     while (!OPEN_LIST.empty())
-    {
+    {   
+        // cout<<"5";
         // pop the best CT_node with lowest sum-of-cost (create a comparator function to compare CT_nodes)
         std::shared_ptr<CT_node> curr_node = OPEN_LIST.top();
         OPEN_LIST.pop();
@@ -139,7 +141,8 @@ void MAPFPlanner::initialize(int preprocess_time_limit)
 {
     cout << "****************************************************" << endl;
     cout << "planner preprocess time limit: " << preprocess_time_limit << endl;
-    this->naive_CBS();
+    naive_CBS() ;
+    // this->naive_CBS();
     // calculate heuristic for all agents and store
     cout << "planner initialize done" << endl;
 }
@@ -156,6 +159,7 @@ int MAPFPlanner::sum_of_costs(vector<list<pair<int,int>>> paths){
 // plan using simple A* that ignores the time dimension
 void MAPFPlanner::plan(int time_limit,vector<Action> & actions) 
 {   
+    // naive_CBS() ;
     actions = std::vector<Action>(env->curr_states.size(), Action::W);
     for (int i = 0; i < env->num_of_agents; i++) 
     {
