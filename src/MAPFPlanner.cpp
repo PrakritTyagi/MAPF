@@ -412,14 +412,7 @@ std::vector<std::pair<int, int>> MAPFPlanner::generateCombinations(int n) {
 
 list<conflict> MAPFPlanner::findVertexConflictsList(const std::vector<std::list<std::pair<int, int>>>& paths)
 {
-    printf("Number of agents %ld \n",paths.size());
     std::vector<std::pair<int, int>> agentCombinations = generateCombinations(paths.size());
-    printf("Number of agent combinations %ld \n",agentCombinations.size());
-    // Remove the combinations which have the same agent twice
-    // Print list of agent combinations
-    // for (const auto& combination : agentCombinations) {
-    //     std::cout << combination.first << " " << combination.second << std::endl;
-    // }
     list<conflict> conflicts;
     // Check conflicts for each combination of 2 agents
     for (const auto& combination : agentCombinations) {
@@ -448,11 +441,54 @@ list<conflict> MAPFPlanner::findVertexConflictsList(const std::vector<std::list<
     return conflicts;
 }
 
+//create a function to get the list of edge conflicts
+list<conflict> MAPFPlanner::findEdgeConflictsList(const std::vector<std::list<std::pair<int, int>>>& paths)
+{
+    // printf("Finding Edge Conflicts \n");
+    std::vector<std::pair<int, int>> agentCombinations = generateCombinations(paths.size());
+    // printf("Agent Combinations -> Size of agent list %ld \n",agentCombinations.size());
+    list<conflict> conflicts;
+    // Check conflicts for each combination of 2 agents
+    for (const auto& combination : agentCombinations) {
+        // In the combination, combination[0] is the first agent and combination[1] is the second agent
+        int agent1 = combination.first;
+        int agent2 = combination.second;
+
+        // Find the agent with the shorter path
+        int shorterAgent = (paths[agent1].size() < paths[agent2].size()) ? agent1 : agent2;
+        int longerAgent = (shorterAgent == agent1) ? agent2 : agent1;
+        // printf("Paths -> Shorted : %ld, Longer : %ld \n",paths[shorterAgent].size(),paths[longerAgent].size());
+        if (paths[shorterAgent].size() == 0 || paths[longerAgent].size() == 0) 
+        {
+            continue;
+        }
+        // Run a loop of length equal to the length of the shorter path where ith element of both paths are checked if they are equal
+        for (int i = 0; i < paths[shorterAgent].size()-1; i++) 
+        {
+            // Create variable which hold the value of ith and i+1th path element of both agents without using auto
+            std::pair<int, int> shorterAgentPath_Current = *std::next(paths[shorterAgent].begin(), i);
+            std::pair<int, int> shorterAgentPath_Next = *std::next(paths[shorterAgent].begin(), i+1);
+            std::pair<int, int> longerAgentPath_Current = *std::next(paths[longerAgent].begin(), i);
+            std::pair<int, int> longerAgentPath_Next = *std::next(paths[longerAgent].begin(), i+1
+            );
+            // Check if the two agents are at the same location at the same timestep
+            if (shorterAgentPath_Current.first == longerAgentPath_Next.first && shorterAgentPath_Next.first == longerAgentPath_Current.first) 
+            {
+                conflicts.push_back(conflict(shorterAgent, longerAgent, shorterAgentPath_Current.first, longerAgentPath_Current.first, i));
+            }
+        }
+
+    }
+
+    return conflicts;
+}
+
 //create a function to get the first edge conflicts
 conflict MAPFPlanner::findEdgeConflicts(const std::vector<std::list<std::pair<int, int>>>& paths) 
 {
     std::vector<int> agentIndices(paths.size());
     std::vector<std::vector<int>> agentCombinations = combinations(agentIndices, 2);
+    printf("Agent Combinations -> Size of agent list %ld \n",agentCombinations.size());
 
     // Check conflicts for each combination of 2 agents
     for (const auto& combination : agentCombinations) {
@@ -524,8 +560,13 @@ vector<constraint_format> MAPFPlanner::convertToConstraint(conflict Conflict)
 // 7. Return the action list for all agents.
 void MAPFPlanner::plan(int time_limit,vector<Action> & actions) 
 {
+    vector<constraint_format> init_constraints;
     actions = std::vector<Action>(env->curr_states.size(), Action::W);
-
+    // Create a constraint list with the current state of the agents
+    for (int i = 0; i < env->num_of_agents; i++) 
+    {
+        init_constraints.push_back(constraint_format(i, env->curr_states[i].location, 0));
+    }
     // Implement Step 1 here
     vector<list<pair<int,int>>> solution;
     for (int i = 0; i < env->num_of_agents; i++) 
@@ -539,7 +580,7 @@ void MAPFPlanner::plan(int time_limit,vector<Action> & actions)
         {
             path = single_agent_plan(env->curr_states[i].location,
                                     env->curr_states[i].orientation,
-                                    env->goal_locations[i].front().first, {});
+                                    env->goal_locations[i].front().first, init_constraints);
         }
         solution.push_back(path);
     }
@@ -551,15 +592,14 @@ void MAPFPlanner::plan(int time_limit,vector<Action> & actions)
 
     list<conflict> conflicts = findVertexConflictsList(solution_copy);
     printf("Initial Conflicts Found -> Size of conflict list %ld \n",conflicts.size());
-    // Only keep those conflicts happening at the next step
     conflicts.remove_if([](const conflict& c) { return c.timestep != 0; });
     printf("Updated Conflicts Found -> Size of conflict list %ld \n",conflicts.size());
-    printf("Conflicts: \n");    
+    printf("VERTEX CONFLICTS: \n");    
     for (const auto& conflict : conflicts) 
     {
-        printf("Agent %d and Agent %d at location %d \n",conflict.agent1,conflict.agent2,conflict.vertex1);
+        printf("Agent %d and Agent %d at location %d at timestep %d \n",conflict.agent1,conflict.agent2,conflict.vertex1,conflict.timestep);
     }
-
+    
     // Using the agents in the conflicts, find the minimum list of agents that occur only once in all the conflicting pairs
     // This is the set of agents that need to be resolved
     vector<int> agentsToResolve;
@@ -569,12 +609,84 @@ void MAPFPlanner::plan(int time_limit,vector<Action> & actions)
         {
             agentsToResolve.push_back(conflict.agent1);
         }
-        if (std::find(agentsToResolve.begin(), agentsToResolve.end(), conflict.agent2) == agentsToResolve.end()) 
+        else if (std::find(agentsToResolve.begin(), agentsToResolve.end(), conflict.agent2) == agentsToResolve.end()) 
         {
             agentsToResolve.push_back(conflict.agent2);
         }
     }
     printf("Agents to resolve -> Size of agent list %ld \n",agentsToResolve.size());
+    printf("Agents to resolve: \n");
+    for (const auto& agent : agentsToResolve) 
+    {
+        printf("Agent %d \n",agent);
+    }
+    // Create a list of constraints for the agents to resolve and recalculate the path for the remaining agents
+    vector<constraint_format> constraints;
+    // Create an independent copy of solutions
+    vector<list<pair<int,int>>> solution_copy2 = solution;
+    for (const auto& agent : agentsToResolve) 
+    {
+        //add the current location as a constraint
+        constraints.push_back(constraint_format(agent, solution_copy2[agent].front().first, 0));
+        solution_copy2[agent].pop_front();
+        constraints.push_back(constraint_format(agent, solution_copy2[agent].front().first, 0));
+    }
+    printf("\n");
+     vector<list<pair<int,int>>> solution_copy3 = solution;
+    // Do the same for edge constraints here
+    list<conflict> edgeConflicts = findEdgeConflictsList(solution_copy3);
+    printf("Initial Edge Conflicts Found -> Size of conflict list %ld \n",edgeConflicts.size());
+    printf("EDGE CONFLICTS: \n");
+    for (const auto& conflict : edgeConflicts) 
+    {
+        printf("Agent %d and Agent %d at location %d at timestep %d \n",conflict.agent1,conflict.agent2,conflict.vertex1,conflict.timestep);
+    }
+    edgeConflicts.remove_if([](const conflict& c) { return c.timestep != 1; });
+    printf("Updated Edge Conflicts Found -> Size of conflict list %ld \n",edgeConflicts.size());
+
+    // Using the agents in the conflicts, find the minimum list of agents that occur only once in all the conflicting pairs
+    // This is the set of agents that need to be resolved
+    vector<int> agentsToResolveEdge;
+    for (const auto& conflict : edgeConflicts) 
+    {
+        if (std::find(agentsToResolveEdge.begin(), agentsToResolveEdge.end(), conflict.agent1) == agentsToResolveEdge.end()) 
+        {
+            agentsToResolveEdge.push_back(conflict.agent1);
+        }
+        else if (std::find(agentsToResolveEdge.begin(), agentsToResolveEdge.end(), conflict.agent2) == agentsToResolveEdge.end()) 
+        {
+            agentsToResolveEdge.push_back(conflict.agent2);
+        }
+    }
+
+    printf("Agents to resolve -> Size of agent list %ld \n",agentsToResolveEdge.size());
+    printf("Agents to resolve: \n");
+    for (const auto& agent : agentsToResolveEdge) 
+    {
+        printf("Agent %d \n",agent);
+    }
+    // Create a list of constraints for the agents to resolve and recalculate the path for the remaining agents
+    vector<list<pair<int,int>>> solution_copy4 = solution;
+    for (const auto& agent : agentsToResolveEdge) 
+    {
+        constraints.push_back(constraint_format(agent, env->curr_states[agent].location, 0));
+        constraints.push_back(constraint_format(agent, solution_copy2[agent].front().first, 0));
+        solution_copy2[agent].pop_front();
+        constraints.push_back(constraint_format(agent, solution_copy2[agent].front().first, 0));
+        solution_copy2[agent].pop_front();
+        constraints.push_back(constraint_format(agent, solution_copy2[agent].front().first, 0));
+    }
+    printf("Constraints to resolve -> Size of constraint list %ld \n",constraints.size());
+    // Recalculate the path for the remaining agents
+    for (int i = 0; i < env->num_of_agents; i++) 
+    {
+        if (std::find(agentsToResolve.begin(), agentsToResolve.end(), i) == agentsToResolve.end()) 
+        {
+            solution[i] = single_agent_plan(env->curr_states[i].location,
+                                            env->curr_states[i].orientation,
+                                            env->goal_locations[i].front().first, constraints);
+        }
+    }
 
     for (int i = 0; i < env->num_of_agents; i++) 
     {
@@ -609,7 +721,7 @@ void MAPFPlanner::plan(int time_limit,vector<Action> & actions)
         }
     }
 
-    printf("Initial Actions Assigned -> Removing Conflicting Agents\n");
+    printf("Initial Actions Assigned -> Removing Conflicting Agents\n\n\n");
     // Assign agents in the agents to resolve a waiting action
     for (const auto& agent : agentsToResolve) 
     {
