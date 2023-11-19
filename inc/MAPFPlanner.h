@@ -97,7 +97,9 @@ public:
     list<conflict> findEdgeConflictsList(const std::vector<std::list<std::pair<int, int>>>& paths);
 
     std::vector<std::pair<int, int>> generateCombinations(int n);
-};
+    std::list<pair<int,int>>single_agent_plan_NT(int start,int start_direct, int end, vector<constraint_format> constraints);
+    bool found_node_NT(vector<constraint_format> constraints, AstarNode* node);
+};  
 
 /**
  * @class CT_node
