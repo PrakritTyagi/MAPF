@@ -56,7 +56,7 @@ void MAPFPlanner::naive_CBS()
         {   
             path = single_agent_plan(i,env->curr_states[i].location,
                                     env->curr_states[i].orientation,
-                                    env->goal_locations[i].front().first, env->goal_locations[i].front().second, root_node->node_constraints);
+                                    env->goal_locations[i].front().first, root_node->node_constraints);
         }
         solution.push_back(path);
     }
@@ -112,7 +112,7 @@ void MAPFPlanner::naive_CBS()
         left_node->node_solution = curr_node->node_solution;
         list<pair<int,int>> new_path = single_agent_plan(CONFLICT.agent1,env->curr_states[CONFLICT.agent1].location,
                                     env->curr_states[CONFLICT.agent1].orientation,
-                                    env->goal_locations[CONFLICT.agent1].front().first,env->goal_locations[CONFLICT.agent1].front().second ,left_node->node_constraints); // TODO: current_constraint_Stack[0].agent_id
+                                    env->goal_locations[CONFLICT.agent1].front().first, left_node->node_constraints); // TODO: current_constraint_Stack[0].agent_id
         left_node->node_solution[CONFLICT.agent1] = new_path;
         left_node->SOC = sum_of_costs(left_node->node_solution);
         left_node->parent_ptr = curr_node;
@@ -125,7 +125,7 @@ void MAPFPlanner::naive_CBS()
         right_node->node_solution = curr_node->node_solution;
         new_path = single_agent_plan(CONFLICT.agent2, env->curr_states[CONFLICT.agent2].location,
                                     env->curr_states[CONFLICT.agent2].orientation,
-                                    env->goal_locations[CONFLICT.agent2].front().first, env->goal_locations[CONFLICT.agent2].front().second,right_node->node_constraints);
+                                    env->goal_locations[CONFLICT.agent2].front().first,right_node->node_constraints);
         right_node->node_solution[CONFLICT.agent2] = new_path;
         right_node->SOC = sum_of_costs(right_node->node_solution);
         right_node->parent_ptr = curr_node;
@@ -206,7 +206,7 @@ void MAPFPlanner::plan(int time_limit,vector<Action> & actions)
             // cout<<"Alotted Path"<<endl;
             path = CBS_solution[i];
             // If About to reach goal in next step then run CBS again
-            if(path.front().first==env->goal_locations[i].front().first && path.front().second==env->goal_locations[i].front().second){
+            if(path.front().first==env->goal_locations[i].front().first ){
                 run_cbs=true;
             }
 
@@ -290,7 +290,7 @@ bool MAPFPlanner::found_node(int agent_id, vector<constraint_format> constraints
     return false;
 }
 
-list<pair<int,int>> MAPFPlanner::single_agent_plan(int agent_id, int start,int start_direct,int end, int end_direct, vector<constraint_format> constraints)
+list<pair<int,int>> MAPFPlanner::single_agent_plan(int agent_id, int start,int start_direct,int end, vector<constraint_format> constraints)
 {
     list<pair<int,int>> path;
     priority_queue<AstarNode*,vector<AstarNode*>,cmp> open_list;
@@ -307,7 +307,7 @@ list<pair<int,int>> MAPFPlanner::single_agent_plan(int agent_id, int start,int s
         open_list.pop();
         close_list.emplace(curr->location*4 + curr->direction);
         
-        if (curr->location == end && curr->direction==end_direct)
+        if (curr->location == end )
         {   
             // cout<<"Goal Reached"<<endl;
             while(curr->parent!=NULL) 

@@ -75,7 +75,7 @@ public:
     void naive_CBS();
 
     // Start kit dummy implementation
-    std::list<pair<int,int>>single_agent_plan(int agent_id, int start,int start_direct, int end, int end_direct, vector<constraint_format> constraints);
+    std::list<pair<int,int>>single_agent_plan(int agent_id, int start,int start_direct, int end, vector<constraint_format> constraints);
     int getManhattanDistance(int loc1, int loc2);
     int getEuclideanDistance(int loc1, int loc2);
     int sum_of_costs(vector<list<pair<int,int>>> paths);
