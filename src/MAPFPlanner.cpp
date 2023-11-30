@@ -1,6 +1,7 @@
 #include <MAPFPlanner.h>
 #include <random>
 
+
 /**
  * @fn CT_node constructor
  * @brief Construct a new CT_node::CT_node object
@@ -42,7 +43,7 @@ void MAPFPlanner::naive_CBS(vector<bool> is_calulate_path)
     // calculate paths for all agents using A*(TODO: heuristics are already calculated in initialize function)
     // store it the root node
     vector<list<pair<int,int>>> solution;
-
+    cout<<"1"<<endl;
     for (int i = 0; i < env->num_of_agents; i++) 
     {   
         list<pair<int,int>> path;
@@ -68,28 +69,30 @@ void MAPFPlanner::naive_CBS(vector<bool> is_calulate_path)
 
     priority_queue<std::shared_ptr<CT_node>,vector<std::shared_ptr<CT_node>>,CT_CMP> OPEN_LIST;
     OPEN_LIST.push(root_node);
-    
+    cout<<"2"<<endl;
     // while loop till open_list is empty
     while (!OPEN_LIST.empty())
     {   
         // pop the best CT_node with lowest sum-of-cost (create a comparator function to compare CT_nodes)
         std::shared_ptr<CT_node> curr_node = OPEN_LIST.top();
-        
+        cout<<"3"<<endl;
         OPEN_LIST.pop();
-
+        
         // check for conflicts in the paths (create a conflict finding function)
         conflict vertex_conflict = findVertexConflicts(curr_node->node_solution);
+        cout<<"3.1"<<endl;
         conflict edge_conflict, final_conflict;
         final_conflict=vertex_conflict;
         // if no conflict, return the solution as this is the goal
         if (vertex_conflict.agent1 == -1 && vertex_conflict.agent2 == -1) 
         {   
+            cout<<"No Conflict"<<endl;
             edge_conflict = findEdgeConflicts(curr_node->node_solution);
+            cout<<"3.2"<<endl;
             final_conflict=edge_conflict;
             if (edge_conflict.agent1 == -1 && edge_conflict.agent2 == -1) 
             {
                 // return the solution
-                // cout << "Solution found" << endl;
                 CBS_solution = curr_node->node_solution;
                 return ;
             }
@@ -107,8 +110,9 @@ void MAPFPlanner::naive_CBS(vector<bool> is_calulate_path)
         
         // if conflict, create two new CT_nodes
         // first node
+       
         vector<constraint_format> current_constraint_stack = convertToConstraint(final_conflict);
-
+        
         std::shared_ptr<CT_node> left_node = std::make_shared<CT_node>();
         curr_node->left_ptr = left_node;
         left_node->node_constraints = curr_node->node_constraints;
@@ -188,9 +192,21 @@ void MAPFPlanner::plan(int time_limit,vector<Action> & actions)
         cout<<"Running CBS"<<endl;
         naive_CBS(is_calulate_path) ;
         run_cbs=false;
+        
+        for(int j=0;j<is_calulate_path.size();j++)
+            is_calulate_path[j]=false;
+                
         cout<<"CBS done"<<endl;
 
     }
+
+     for (int i = 0; i < env->num_of_agents; i++) {
+        // if(CBS_solution[i].front().first==env->curr_states[i].location && CBS_solution[i].front().second==env->curr_states[i].orientation)
+        //     cout<<"Agent "<<i<<" Correct State"<<endl;
+        if(!CBS_solution[i].empty()){
+                CBS_solution[i].pop_front();
+            }
+     }
     
     actions = std::vector<Action>(env->curr_states.size(), Action::W);
     
@@ -204,19 +220,21 @@ void MAPFPlanner::plan(int time_limit,vector<Action> & actions)
         }
         else 
         {   
-            // cout<<"Alotted Path"<<endl;
+            
             path = CBS_solution[i];
             // If About to reach goal in next step then run CBS again
             if(path.front().first==env->goal_locations[i].front().first ){
+                cout<<"Agent "<<i<<" Reached Goal"<<endl;
                 run_cbs=true;
+                // assign false to all of is_calulate_path
+                for(int j=0;j<is_calulate_path.size();j++)
+                    is_calulate_path[j]=false;
+                
+                is_calulate_path[i]=true;
             }
 
-            // cout<<"AgentId: "<<i<<endl;
-            if(!CBS_solution[i].empty()){
-                CBS_solution[i].pop_front();
-            }
-            else{
-                // cout<<"Empty Path Agent: "<<i<<endl;
+            
+            if(CBS_solution[i].empty()){
                 path.push_back({env->curr_states[i].location, env->curr_states[i].orientation});
             }
                
@@ -428,11 +446,6 @@ conflict MAPFPlanner::findVertexConflicts(const std::vector<std::list<std::pair<
     
     // Check conflicts for each combination of 2 agents
     for (const auto& combination : agentCombinations) {
-        // In the combination, combination[0] is the first agent and combination[1] is the second agent
-        if(combination[0]==combination[1]){
-            continue;
-        }
-       
         int agent1 = combination[0];
         int agent2 = combination[1];
         
@@ -467,37 +480,28 @@ conflict MAPFPlanner::findEdgeConflicts(const std::vector<std::list<std::pair<in
     // Check conflicts for each combination of 2 agents
     
     for (const auto& combination : agentCombinations) {
-        // In the combination, combination[0] is the first agent and combination[1] is the second agent
-        if(combination[0]==combination[1]){
-            
-            continue;
-        }
-      
         int agent1 = combination[0];
         int agent2 = combination[1];
-
+        
         // Find the agent with the shorter path
         int shorterAgent = (paths[agent1].size() < paths[agent2].size()) ? agent1 : agent2;
         int longerAgent = (shorterAgent == agent1) ? agent2 : agent1;
-
+        if(paths[shorterAgent].size()==0){
+            continue;
+        }
         // Run a loop of length equal to the length of the shorter path where ith element of both paths are checked if they are equal
         for (int i = 0; i < paths[shorterAgent].size()-1; i++) 
-        {
+        {   
+            
             // Create variable which hold the value of ith and i+1th path element of both agents without using auto
             std::pair<int, int> shorterAgentPath_Current = *std::next(paths[shorterAgent].begin(), i);
             std::pair<int, int> shorterAgentPath_Next = *std::next(paths[shorterAgent].begin(), i+1);
             std::pair<int, int> longerAgentPath_Current = *std::next(paths[longerAgent].begin(), i);
             std::pair<int, int> longerAgentPath_Next = *std::next(paths[longerAgent].begin(), i+1);
             // Check if the two agents are at the same location at the same timestep
-          
-            // if((agent1==3 && agent2==5)){
-            //     cout<<"Agent 1: "<<agent1<<" Agent 2: "<<agent2<<endl;
-            //     cout<<"Shorter Agent Path Current: "<<shorterAgentPath_Current.first<<" Shorter Agent Path Next: "<<shorterAgentPath_Next.first<<endl;
-            //     cout<<"Longer Agent Path Current: "<<longerAgentPath_Current.first<<" Longer Agent Path Next: "<<longerAgentPath_Next.first<<endl;
-            // }
-
             if (shorterAgentPath_Current.first == longerAgentPath_Next.first && shorterAgentPath_Next.first == longerAgentPath_Current.first) 
             {
+                cout<<"Edge 4"<<endl;
                 return conflict(shorterAgent, longerAgent, shorterAgentPath_Current.first, longerAgentPath_Current.first, i);
             }
         }
