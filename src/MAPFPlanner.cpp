@@ -61,7 +61,7 @@ void MAPFPlanner::naive_CBS()
         solution.push_back(path);
     }
     root_node->node_solution = solution;
-    printf("Initial Solution Generated -> Size of solution vector %ld \n",root_node->node_solution.size());
+   
     // calculate sum-of-cost and store it in root node
     root_node->SOC = sum_of_costs(root_node->node_solution);
 
@@ -103,6 +103,7 @@ void MAPFPlanner::naive_CBS()
             // cout<<"Agent 1: "<<vertex_conflict.agent1<<" Agent 2: "<<vertex_conflict.agent2<<" Vertex: "<<vertex_conflict.vertex1<<" TimeStep: "<<vertex_conflict.timestep;
             // cout<<endl;
         }
+        
         // if conflict, create two new CT_nodes
         // first node
         vector<constraint_format> current_constraint_stack = convertToConstraint(final_conflict);
@@ -189,8 +190,7 @@ void MAPFPlanner::plan(int time_limit,vector<Action> & actions)
         cout<<"CBS done"<<endl;
 
     }
-    else
-        cout<<"Using existing CBS solution"<<endl;
+    
     actions = std::vector<Action>(env->curr_states.size(), Action::W);
     
     for (int i = 0; i < env->num_of_agents; i++) 
@@ -198,7 +198,7 @@ void MAPFPlanner::plan(int time_limit,vector<Action> & actions)
         list<pair<int,int>> path;
         if (env->goal_locations[i].empty()) 
         {
-            cout<<"Completed All the fuckingggggggggggg Goals"<<endl;
+            cout<<"Completed All the Goals"<<endl;
             path.push_back({env->curr_states[i].location, env->curr_states[i].orientation});
         }
         else 
@@ -244,22 +244,6 @@ void MAPFPlanner::plan(int time_limit,vector<Action> & actions)
         
     }
     
-    // for (int i = 0; i < env->num_of_agents; i++) 
-    // {   
-    //     cout<<"Agent: "<<i<<" Location: "<<env->curr_states[i].location<<" Orientation: "<<env->curr_states[i].orientation<<endl;
-    //     // Print goal locations
-    //     cout<<"Goal Location: "<<env->goal_locations[i].front().first<<" Goal Orientation: "<<env->goal_locations[i].front().second<<endl;
-    
-    // // Check if current state is equal to goal state
-
-    //     if (env->curr_states[i].location == env->goal_locations[i].front().first &&
-    //         env->curr_states[i].orientation == env->goal_locations[i].front().second) 
-    //     {
-    //         // Current state is equal to goal state, pop the goal state
-    //         cout<<"Removing Goal"<<endl;
-    //         env->goal_locations[i].erase(env->goal_locations[i].begin());
-    //     }
-    // }
 
   return;
 }
