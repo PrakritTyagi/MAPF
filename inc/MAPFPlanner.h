@@ -4,7 +4,7 @@
 #include "ActionModel.h"
 
 
-extern vector<list<pair<int,int>>> CBS_solution;
+
 
 // Define a structure to represent a conflict
 struct conflict {
@@ -60,7 +60,7 @@ class MAPFPlanner
 {
 public:
     SharedEnvironment* env;
-
+    std::vector<std::list<std::pair<int,int>>> CBS_solution; 
 	MAPFPlanner(SharedEnvironment* env): env(env){};
     MAPFPlanner(){env = new SharedEnvironment();};
 	virtual ~MAPFPlanner(){delete env;};
@@ -72,21 +72,21 @@ public:
     virtual void plan(int time_limit, std::vector<Action> & plan);
 
     // CBS implementation function
-    virtual void naive_CBS();
+    void naive_CBS();
 
     // Start kit dummy implementation
-    std::list<pair<int,int>>single_agent_plan(int start,int start_direct, int end, vector<constraint_format> constraints);
+    std::list<pair<int,int>>single_agent_plan(int agent_id, int start,int start_direct, int end, vector<constraint_format> constraints);
     int getManhattanDistance(int loc1, int loc2);
-    
+    int getEuclideanDistance(int loc1, int loc2);
     int sum_of_costs(vector<list<pair<int,int>>> paths);
-    bool found_node(vector<constraint_format> constraints, AstarNode* node);
+    bool found_node(int agent_id, vector<constraint_format> constraints, AstarNode* node);
     std::list<pair<int,int>> getNeighbors(int location, int direction);
     bool validateMove(int loc,int loc2);
 
     //My work
 
     void combinationsUtil(const std::vector<int>& arr, std::vector<std::vector<int>>& result, std::vector<int>& combination, int start, int end, int index, int k); 
-    std::vector<std::vector<int>> combinations(const std::vector<int>& arr, int k);
+    std::vector<std::vector<int>> combinations(std::vector<int> arr);
     conflict findVertexConflicts(const std::vector<std::list<std::pair<int, int>>>& paths); 
     conflict findEdgeConflicts(const std::vector<std::list<std::pair<int, int>>>& paths);
     int convertToSingleInt(int x, int y);

@@ -41,11 +41,10 @@ void MAPFPlanner::naive_CBS()
 {   
     // create a root node with empty constraint variable
     std::shared_ptr<CT_node> root_node = std::make_shared<CT_node>();
-
     // calculate paths for all agents using A*(TODO: heuristics are already calculated in initialize function)
     // store it the root node
     vector<list<pair<int,int>>> solution;
-    cout<<"Generating Initial Solution for agents"<<endl;
+
     for (int i = 0; i < env->num_of_agents; i++) 
     {   
         list<pair<int,int>> path;
@@ -54,8 +53,8 @@ void MAPFPlanner::naive_CBS()
             path.push_back({env->curr_states[i].location, env->curr_states[i].orientation});
         } 
         else 
-        {
-            path = single_agent_plan(env->curr_states[i].location,
+        {   
+            path = single_agent_plan(i,env->curr_states[i].location,
                                     env->curr_states[i].orientation,
                                     env->goal_locations[i].front().first, root_node->node_constraints);
         }
@@ -65,44 +64,59 @@ void MAPFPlanner::naive_CBS()
     printf("Initial Solution Generated -> Size of solution vector %ld \n",root_node->node_solution.size());
     // calculate sum-of-cost and store it in root node
     root_node->SOC = sum_of_costs(root_node->node_solution);
-    
+
     priority_queue<std::shared_ptr<CT_node>,vector<std::shared_ptr<CT_node>>,CT_CMP> OPEN_LIST;
     OPEN_LIST.push(root_node);
+    
     // while loop till open_list is empty
     while (!OPEN_LIST.empty())
     {   
-        printf("OPEN_LIST size %ld \n",OPEN_LIST.size());
         // pop the best CT_node with lowest sum-of-cost (create a comparator function to compare CT_nodes)
         std::shared_ptr<CT_node> curr_node = OPEN_LIST.top();
+        
         OPEN_LIST.pop();
 
         // check for conflicts in the paths (create a conflict finding function)
-        conflict CONFLICT = findVertexConflicts(curr_node->node_solution);
+        conflict vertex_conflict = findVertexConflicts(curr_node->node_solution);
+        conflict edge_conflict, final_conflict;
+        final_conflict=vertex_conflict;
         // if no conflict, return the solution as this is the goal
-        if (CONFLICT.agent1 == -1 && CONFLICT.agent2 == -1) 
-        {
-            conflict CONFLICT = findEdgeConflicts(curr_node->node_solution);
-            if (CONFLICT.agent1 == -1 && CONFLICT.agent2 == -1) 
+        if (vertex_conflict.agent1 == -1 && vertex_conflict.agent2 == -1) 
+        {   
+            edge_conflict = findEdgeConflicts(curr_node->node_solution);
+            final_conflict=edge_conflict;
+            if (edge_conflict.agent1 == -1 && edge_conflict.agent2 == -1) 
             {
                 // return the solution
                 cout << "Solution found" << endl;
                 CBS_solution = curr_node->node_solution;
-                return;
+                return ;
             }
+            else{
+                // cout<<"Edge Conflict"<<endl;
+                // cout<<"Agent 1: "<<edge_conflict.agent1<<" Agent 2: "<<edge_conflict.agent2<<" Vertex: "<<edge_conflict.vertex1<<" TimeStep: "<<edge_conflict.timestep;
+                // cout<<endl;
+            }
+        }
+        else{
+            // cout<<"Vertex Conflict"<<endl;
+            // cout<<"Agent 1: "<<vertex_conflict.agent1<<" Agent 2: "<<vertex_conflict.agent2<<" Vertex: "<<vertex_conflict.vertex1<<" TimeStep: "<<vertex_conflict.timestep;
+            // cout<<endl;
         }
         // if conflict, create two new CT_nodes
         // first node
-        vector<constraint_format> current_constraint_stack = convertToConstraint(CONFLICT);
+        vector<constraint_format> current_constraint_stack = convertToConstraint(final_conflict);
 
         std::shared_ptr<CT_node> left_node = std::make_shared<CT_node>();
         curr_node->left_ptr = left_node;
         left_node->node_constraints = curr_node->node_constraints;
         left_node->node_constraints.push_back(current_constraint_stack[0]);
         left_node->node_solution = curr_node->node_solution;
-        list<pair<int,int>> new_path = single_agent_plan(env->curr_states[CONFLICT.agent1].location,
-                                    env->curr_states[CONFLICT.agent1].orientation,
-                                    env->goal_locations[CONFLICT.agent1].front().first, left_node->node_constraints); // TODO: current_constraint_Stack[0].agent_id
-        left_node->node_solution[CONFLICT.agent1] = new_path;
+        int agent1 = final_conflict.agent1, agent2 = final_conflict.agent2;
+        list<pair<int,int>> new_path = single_agent_plan(agent1,env->curr_states[agent1].location,
+                                    env->curr_states[agent1].orientation,
+                                    env->goal_locations[agent1].front().first, left_node->node_constraints);
+        left_node->node_solution[agent1] = new_path;
         left_node->SOC = sum_of_costs(left_node->node_solution);
         left_node->parent_ptr = curr_node;
 
@@ -112,10 +126,10 @@ void MAPFPlanner::naive_CBS()
         right_node->node_constraints = curr_node->node_constraints;
         right_node->node_constraints.push_back(current_constraint_stack[1]);
         right_node->node_solution = curr_node->node_solution;
-        new_path = single_agent_plan(env->curr_states[CONFLICT.agent2].location,
-                                    env->curr_states[CONFLICT.agent2].orientation,
-                                    env->goal_locations[CONFLICT.agent2].front().first, right_node->node_constraints);
-        right_node->node_solution[CONFLICT.agent2] = new_path;
+        new_path = single_agent_plan(agent2, env->curr_states[agent2].location,
+                                    env->curr_states[agent2].orientation,
+                                    env->goal_locations[agent2].front().first,right_node->node_constraints);
+        right_node->node_solution[agent2] = new_path;
         right_node->SOC = sum_of_costs(right_node->node_solution);
         right_node->parent_ptr = curr_node;
 
@@ -124,10 +138,8 @@ void MAPFPlanner::naive_CBS()
             OPEN_LIST.push(left_node);
         if(right_node->SOC < INT64_MAX)
             OPEN_LIST.push(right_node);
-
-        // Empty the current node's solution and constraints to free up memory
-        curr_node->node_constraints.clear();
-        curr_node->node_solution.clear();
+        
+        curr_node.reset();
     }
 }
 
@@ -147,6 +159,7 @@ void MAPFPlanner::initialize(int preprocess_time_limit)
     cout << "****************************************************" << endl;
     cout << "planner preprocess time limit: " << preprocess_time_limit << endl;
     
+
     // calculate heuristic for all agents and store
     cout << "planner initialize done" << endl;
 }
@@ -162,28 +175,52 @@ int MAPFPlanner::sum_of_costs(vector<list<pair<int,int>>> paths){
 
 // plan using simple A* that ignores the time dimension
 void MAPFPlanner::plan(int time_limit,vector<Action> & actions) 
-{   
+ {  
+     
     static bool run_cbs=true;
+    // static  vector<std::vector<std::pair<int, int>>> g_locations;
+    static vector<list<pair<int,int>>> Solution;
+    
     if(run_cbs){
-        cout<<"Entering Planner"<<endl;
+        
+        cout<<"Running CBS"<<endl;
         naive_CBS() ;
         run_cbs=false;
-        cout<<"Exiting Planner"<<endl;
+        cout<<"CBS done"<<endl;
+
     }
     else
         cout<<"Using existing CBS solution"<<endl;
     actions = std::vector<Action>(env->curr_states.size(), Action::W);
+    
     for (int i = 0; i < env->num_of_agents; i++) 
-    {
+    {  
         list<pair<int,int>> path;
         if (env->goal_locations[i].empty()) 
         {
+            cout<<"Completed All the fuckingggggggggggg Goals"<<endl;
             path.push_back({env->curr_states[i].location, env->curr_states[i].orientation});
-        } 
-        else 
-        {
-            path = CBS_solution[i];
         }
+        else 
+        {   
+            // cout<<"Alotted Path"<<endl;
+            path = CBS_solution[i];
+            // If About to reach goal in next step then run CBS again
+            if(path.front().first==env->goal_locations[i].front().first ){
+                run_cbs=true;
+            }
+
+            // cout<<"AgentId: "<<i<<endl;
+            if(!CBS_solution[i].empty()){
+                CBS_solution[i].pop_front();
+            }
+            else{
+                // cout<<"Empty Path Agent: "<<i<<endl;
+                path.push_back({env->curr_states[i].location, env->curr_states[i].orientation});
+            }
+               
+        }
+
         if (path.front().first != env->curr_states[i].location)
         {
             actions[i] = Action::FW; //forward action
@@ -200,95 +237,139 @@ void MAPFPlanner::plan(int time_limit,vector<Action> & actions)
                 actions[i] = Action::CCR; //CCR--clockwise rotate
             } 
         }
-        CBS_solution[i].pop_front();
-    
+        else{
+            actions[i]=Action::W;
+        }
+        
+        
     }
-
     
+    // for (int i = 0; i < env->num_of_agents; i++) 
+    // {   
+    //     cout<<"Agent: "<<i<<" Location: "<<env->curr_states[i].location<<" Orientation: "<<env->curr_states[i].orientation<<endl;
+    //     // Print goal locations
+    //     cout<<"Goal Location: "<<env->goal_locations[i].front().first<<" Goal Orientation: "<<env->goal_locations[i].front().second<<endl;
+    
+    // // Check if current state is equal to goal state
+
+    //     if (env->curr_states[i].location == env->goal_locations[i].front().first &&
+    //         env->curr_states[i].orientation == env->goal_locations[i].front().second) 
+    //     {
+    //         // Current state is equal to goal state, pop the goal state
+    //         cout<<"Removing Goal"<<endl;
+    //         env->goal_locations[i].erase(env->goal_locations[i].begin());
+    //     }
+    // }
+
   return;
 }
 
-bool MAPFPlanner::found_node(vector<constraint_format> constraints, AstarNode* node){
-    for(auto n: constraints){
-        // If Vertex Constraint
-        if(n.vertex_2==-1){
-            if(n.vertex_1 ==node->location && n.t==node->t){
-            return true;
-            }
-        }
-        // If Edge Constraint
-        else{
-            if((n.vertex_2 ==node->location && n.t+1==node->t) ||(n.vertex_1 ==node->location && n.t+1==node->t))  {
-            return true;
+bool MAPFPlanner::found_node(int agent_id, vector<constraint_format> constraints, AstarNode* node){
+    if(!constraints.empty()){
+        for(constraint_format n: constraints){
+            if(n.agent_id== agent_id){
+            // If Vertex Constraint
+                if(n.vertex_2==-1){
+                    // if(n.vertex_1==941 && n.t==4){
+                    //     cout<<"Node Location: "<<node->location<<"Time Step: "<<node->t<<endl;
+                    // }
+                    if(n.vertex_1 ==node->location && n.t==node->t){
+                        // cout<<"Found Node: "<< " Vertex: "<< n.vertex_1<<" TimeStep: "<<n.t;
+                        return true;
+                    }
+                }
+                // If Edge Constraint
+                else{
+                    if((n.vertex_2 ==node->location && n.t+1==node->t) ||(n.vertex_1 ==node->location && n.t+1==node->t))  {
+                        return true;
+                    }
+                }
             }
         }
     }
     return false;
 }
 
-list<pair<int,int>> MAPFPlanner::single_agent_plan(int start,int start_direct,int end, vector<constraint_format> constraints)
+list<pair<int,int>> MAPFPlanner::single_agent_plan(int agent_id, int start,int start_direct,int end, vector<constraint_format> constraints)
 {
     list<pair<int,int>> path;
     priority_queue<AstarNode*,vector<AstarNode*>,cmp> open_list;
     unordered_map<int,AstarNode*> all_nodes;
     unordered_set<int> close_list;
-    AstarNode* s = new AstarNode(start, start_direct, 0, getManhattanDistance(start,end), nullptr);
+    AstarNode* s = new AstarNode(start, start_direct, 0, getEuclideanDistance(start,end), nullptr);
+    s->t=0;
     open_list.push(s);
     all_nodes[start*4 + start_direct] = s;
-
+    
     while (!open_list.empty())
     {
         AstarNode* curr = open_list.top();
         open_list.pop();
         close_list.emplace(curr->location*4 + curr->direction);
-        if (curr->location == end)
-        {
+        
+        if (curr->location == end )
+        {   
+            // cout<<"Goal Reached"<<endl;
             while(curr->parent!=NULL) 
             {
                 path.emplace_front(make_pair(curr->location, curr->direction));
                 curr = curr->parent;
             }
+            path.emplace_front(make_pair(curr->location, curr->direction));
             break;
         }
+
         list<pair<int,int>> neighbors = getNeighbors(curr->location, curr->direction);
         for (const pair<int,int>& neighbor: neighbors)
-        {
+        {   AstarNode* next_node = new AstarNode(neighbor.first, neighbor.second,curr->g+1,getEuclideanDistance(neighbor.first,end),curr->t+1 ,curr);
+            
+            if(found_node(agent_id, constraints, next_node)){
+                delete next_node;
+                continue;
+            }
+            
             if (close_list.find(neighbor.first*4 + neighbor.second) != close_list.end())
                 continue;
+            
             if (all_nodes.find(neighbor.first*4 + neighbor.second) != all_nodes.end())
             {   
+                delete next_node;
                 AstarNode* old = all_nodes[neighbor.first*4 + neighbor.second];
                 if (curr->g + 1 < old->g)
         
-                {   AstarNode node(old->location,old->direction,curr->g+1,old->h+curr->g+1,curr->t+1,curr);
-                    if(!found_node(constraints, &node)){ 
+                {   
                     old->g = curr->g+1;
                     old->f = old->h+old->g;
                     old->parent = curr;
                     old->t=curr->t+1;
-                    }
                 }
             }
             else
-            {   
-                
-                AstarNode* next_node = new AstarNode(neighbor.first, neighbor.second,
-                    curr->g+1,getManhattanDistance(neighbor.first,end),curr->t ,curr);
-                if(!found_node(constraints, next_node)){
-                    open_list.push(next_node);
-                }
+            {    
+                open_list.push(next_node);
                 all_nodes[neighbor.first*4+neighbor.second] = next_node;
             }
         }
     }
+
     for (auto n: all_nodes)
     {
         delete n.second;
     }
     all_nodes.clear();
+
     return path;
 }
 
+
+int MAPFPlanner::getEuclideanDistance(int loc1, int loc2)
+{
+    int loc1_x = loc1/env->cols;
+    int loc1_y = loc1%env->cols;
+    int loc2_x = loc2/env->cols;
+    int loc2_y = loc2%env->cols;
+    return sqrt(pow(loc1_x - loc2_x,2) + pow(loc1_y - loc2_y,2));
+}
 
 int MAPFPlanner::getManhattanDistance(int loc1, int loc2)
 {
@@ -342,25 +423,15 @@ list<pair<int,int>> MAPFPlanner::getNeighbors(int location,int direction)
 
 // Resolve conflicts using CBS (or other conflict resolution method)
 
-
-void MAPFPlanner::combinationsUtil(const std::vector<int>& arr, std::vector<std::vector<int>>& result, std::vector<int>& combination, int start, int end, int index, int k) 
-{
-    if (index == k) {
-        result.push_back(combination);
-        return;
-    }
-
-    for (int i = start; i <= end && end - i + 1 >= k - index; i++) {
-        combination[index] = arr[i];
-        combinationsUtil(arr, result, combination, i + 1, end, index + 1, k);
-    }
-}
-
-
-std::vector<std::vector<int>> MAPFPlanner::combinations(const std::vector<int>& arr, int k) {
+std::vector<std::vector<int>> MAPFPlanner::combinations(std::vector<int> arr) {
     std::vector<std::vector<int>> result;
-    std::vector<int> combination(k);
-    combinationsUtil(arr, result, combination, 0, arr.size() - 1, 0, k);
+
+    for (int i = 0; i < arr.size(); ++i) {
+        for (int j = i + 1; j < arr.size(); ++j) {
+            result.push_back({arr[i], arr[j]});
+        }
+    }
+
     return result;
 }
 
@@ -368,15 +439,18 @@ conflict MAPFPlanner::findVertexConflicts(const std::vector<std::list<std::pair<
 {
     std::vector<int> agentIndices(paths.size());
     std::iota(agentIndices.begin(), agentIndices.end(), 0);  // Fill with 0, 1, ..., n-1
-
-    std::vector<std::vector<int>> agentCombinations = combinations(agentIndices, 2);
-
+    std::vector<std::vector<int>> agentCombinations = combinations(agentIndices);
+    
     // Check conflicts for each combination of 2 agents
     for (const auto& combination : agentCombinations) {
         // In the combination, combination[0] is the first agent and combination[1] is the second agent
+        if(combination[0]==combination[1]){
+            continue;
+        }
+       
         int agent1 = combination[0];
         int agent2 = combination[1];
-
+        
         // Find the agent with the shorter path
         int shorterAgent = (paths[agent1].size() < paths[agent2].size()) ? agent1 : agent2;
         int longerAgent = (shorterAgent == agent1) ? agent2 : agent1;
@@ -402,11 +476,18 @@ conflict MAPFPlanner::findVertexConflicts(const std::vector<std::list<std::pair<
 conflict MAPFPlanner::findEdgeConflicts(const std::vector<std::list<std::pair<int, int>>>& paths) 
 {
     std::vector<int> agentIndices(paths.size());
-    std::vector<std::vector<int>> agentCombinations = combinations(agentIndices, 2);
-
+    std::iota(agentIndices.begin(), agentIndices.end(), 0); 
+    std::vector<std::vector<int>> agentCombinations = combinations(agentIndices);
+  
     // Check conflicts for each combination of 2 agents
+    
     for (const auto& combination : agentCombinations) {
         // In the combination, combination[0] is the first agent and combination[1] is the second agent
+        if(combination[0]==combination[1]){
+            
+            continue;
+        }
+      
         int agent1 = combination[0];
         int agent2 = combination[1];
 
@@ -423,6 +504,13 @@ conflict MAPFPlanner::findEdgeConflicts(const std::vector<std::list<std::pair<in
             std::pair<int, int> longerAgentPath_Current = *std::next(paths[longerAgent].begin(), i);
             std::pair<int, int> longerAgentPath_Next = *std::next(paths[longerAgent].begin(), i+1);
             // Check if the two agents are at the same location at the same timestep
+          
+            // if((agent1==3 && agent2==5)){
+            //     cout<<"Agent 1: "<<agent1<<" Agent 2: "<<agent2<<endl;
+            //     cout<<"Shorter Agent Path Current: "<<shorterAgentPath_Current.first<<" Shorter Agent Path Next: "<<shorterAgentPath_Next.first<<endl;
+            //     cout<<"Longer Agent Path Current: "<<longerAgentPath_Current.first<<" Longer Agent Path Next: "<<longerAgentPath_Next.first<<endl;
+            // }
+
             if (shorterAgentPath_Current.first == longerAgentPath_Next.first && shorterAgentPath_Next.first == longerAgentPath_Current.first) 
             {
                 return conflict(shorterAgent, longerAgent, shorterAgentPath_Current.first, longerAgentPath_Current.first, i);
