@@ -1,8 +1,6 @@
 #include <MAPFPlanner.h>
 #include <random>
 
-vector<list<pair<int,int>>> CBS_solution;
-
 /**
  * @fn CT_node constructor
  * @brief Construct a new CT_node::CT_node object
@@ -37,7 +35,7 @@ struct CT_CMP
  * @fn CBS functions
  * 
 */
-void MAPFPlanner::naive_CBS()
+void MAPFPlanner::naive_CBS(vector<bool> is_calulate_path)
 {   
     // create a root node with empty constraint variable
     std::shared_ptr<CT_node> root_node = std::make_shared<CT_node>();
@@ -52,11 +50,14 @@ void MAPFPlanner::naive_CBS()
         {
             path.push_back({env->curr_states[i].location, env->curr_states[i].orientation});
         } 
-        else 
+        else if(is_calulate_path[i])
         {   
             path = single_agent_plan(i,env->curr_states[i].location,
                                     env->curr_states[i].orientation,
                                     env->goal_locations[i].front().first, root_node->node_constraints);
+        }
+        else{
+            path = CBS_solution[i];
         }
         solution.push_back(path);
     }
@@ -88,20 +89,20 @@ void MAPFPlanner::naive_CBS()
             if (edge_conflict.agent1 == -1 && edge_conflict.agent2 == -1) 
             {
                 // return the solution
-                cout << "Solution found" << endl;
+                // cout << "Solution found" << endl;
                 CBS_solution = curr_node->node_solution;
                 return ;
             }
             else{
-                // cout<<"Edge Conflict"<<endl;
-                // cout<<"Agent 1: "<<edge_conflict.agent1<<" Agent 2: "<<edge_conflict.agent2<<" Vertex: "<<edge_conflict.vertex1<<" TimeStep: "<<edge_conflict.timestep;
-                // cout<<endl;
+                cout<<"Edge Conflict"<<endl;
+                cout<<"Agent 1: "<<edge_conflict.agent1<<" Agent 2: "<<edge_conflict.agent2<<" Vertex: "<<edge_conflict.vertex1<<" TimeStep: "<<edge_conflict.timestep;
+                cout<<endl;
             }
         }
         else{
-            // cout<<"Vertex Conflict"<<endl;
-            // cout<<"Agent 1: "<<vertex_conflict.agent1<<" Agent 2: "<<vertex_conflict.agent2<<" Vertex: "<<vertex_conflict.vertex1<<" TimeStep: "<<vertex_conflict.timestep;
-            // cout<<endl;
+            cout<<"Vertex Conflict"<<endl;
+            cout<<"Agent 1: "<<vertex_conflict.agent1<<" Agent 2: "<<vertex_conflict.agent2<<" Vertex: "<<vertex_conflict.vertex1<<" TimeStep: "<<vertex_conflict.timestep;
+            cout<<endl;
         }
         
         // if conflict, create two new CT_nodes
@@ -177,7 +178,7 @@ int MAPFPlanner::sum_of_costs(vector<list<pair<int,int>>> paths){
 // plan using simple A* that ignores the time dimension
 void MAPFPlanner::plan(int time_limit,vector<Action> & actions) 
  {  
-     
+    static vector<bool> is_calulate_path(env->num_of_agents, true); 
     static bool run_cbs=true;
     // static  vector<std::vector<std::pair<int, int>>> g_locations;
     static vector<list<pair<int,int>>> Solution;
@@ -185,7 +186,7 @@ void MAPFPlanner::plan(int time_limit,vector<Action> & actions)
     if(run_cbs){
         
         cout<<"Running CBS"<<endl;
-        naive_CBS() ;
+        naive_CBS(is_calulate_path) ;
         run_cbs=false;
         cout<<"CBS done"<<endl;
 

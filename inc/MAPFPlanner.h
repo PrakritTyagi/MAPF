@@ -64,15 +64,13 @@ public:
 	MAPFPlanner(SharedEnvironment* env): env(env){};
     MAPFPlanner(){env = new SharedEnvironment();};
 	virtual ~MAPFPlanner(){delete env;};
-
-
     virtual void initialize(int preprocess_time_limit);
 
     // return next states for all agents
     virtual void plan(int time_limit, std::vector<Action> & plan);
 
     // CBS implementation function
-    void naive_CBS();
+    void naive_CBS(vector<bool> is_calulate_path);
 
     // Start kit dummy implementation
     std::list<pair<int,int>>single_agent_plan(int agent_id, int start,int start_direct, int end, vector<constraint_format> constraints);
