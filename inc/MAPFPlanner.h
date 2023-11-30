@@ -86,7 +86,7 @@ public:
     //My work
 
     void combinationsUtil(const std::vector<int>& arr, std::vector<std::vector<int>>& result, std::vector<int>& combination, int start, int end, int index, int k); 
-    std::vector<std::vector<int>> combinations(const std::vector<int>& arr, int k);
+    std::vector<std::vector<int>> combinations(std::vector<int> arr);
     conflict findVertexConflicts(const std::vector<std::list<std::pair<int, int>>>& paths); 
     conflict findEdgeConflicts(const std::vector<std::list<std::pair<int, int>>>& paths);
     int convertToSingleInt(int x, int y);
