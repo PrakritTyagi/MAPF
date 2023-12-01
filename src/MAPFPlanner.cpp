@@ -71,7 +71,7 @@ void MAPFPlanner::naive_CBS()
     while (!OPEN_LIST.empty())
     {   
         
-      
+        // cout<<"1"<<endl;
         // pop the best CT_node with lowest sum-of-cost (create a comparator function to compare CT_nodes)
         std::shared_ptr<CT_node> curr_node = OPEN_LIST.top();
         
@@ -83,6 +83,7 @@ void MAPFPlanner::naive_CBS()
         // if no conflict, return the solution as this is the goal
         if (vertex_conflict.agent1 == -1 && vertex_conflict.agent2 == -1) 
         {   
+            // cout<<"2"<<endl;
             edge_conflict = findEdgeConflicts(curr_node->node_solution);
             final_conflict=edge_conflict;
             if (edge_conflict.agent1 == -1 && edge_conflict.agent2 == -1) 
@@ -93,15 +94,15 @@ void MAPFPlanner::naive_CBS()
                 return ;
             }
             else{
-                // cout<<"Edge Conflict"<<endl;
-                // cout<<"Agent 1: "<<edge_conflict.agent1<<" Agent 2: "<<edge_conflict.agent2<<" Vertex: "<<edge_conflict.vertex1<<" TimeStep: "<<edge_conflict.timestep;
-                // cout<<endl;
+                cout<<"Edge Conflict"<<endl;
+                cout<<"Agent 1: "<<edge_conflict.agent1<<" Agent 2: "<<edge_conflict.agent2<<" Vertex: "<<edge_conflict.vertex1<<" TimeStep: "<<edge_conflict.timestep;
+                cout<<endl;
             }
         }
         else{
-            // cout<<"Vertex Conflict"<<endl;
-            // cout<<"Agent 1: "<<vertex_conflict.agent1<<" Agent 2: "<<vertex_conflict.agent2<<" Vertex: "<<vertex_conflict.vertex1<<" TimeStep: "<<vertex_conflict.timestep;
-            // cout<<endl;
+            cout<<"Vertex Conflict"<<endl;
+            cout<<"Agent 1: "<<vertex_conflict.agent1<<" Agent 2: "<<vertex_conflict.agent2<<" Vertex: "<<vertex_conflict.vertex1<<" TimeStep: "<<vertex_conflict.timestep;
+            cout<<endl;
         }
         // if conflict, create two new CT_nodes
         // first node
@@ -189,6 +190,13 @@ void MAPFPlanner::plan(int time_limit,vector<Action> & actions)
         naive_CBS() ;
         run_cbs=false;
         cout<<"CBS done"<<endl;
+        
+        for(int i=0;i<CBS_solution.size();i++){
+            if(!CBS_solution[i].empty()){
+                CBS_solution[i].pop_front();
+            }
+            
+        }
     }
     
     actions = std::vector<Action>(env->curr_states.size(), Action::W);
@@ -244,22 +252,6 @@ void MAPFPlanner::plan(int time_limit,vector<Action> & actions)
         
     }
     
-    // for (int i = 0; i < env->num_of_agents; i++) 
-    // {   
-    //     cout<<"Agent: "<<i<<" Location: "<<env->curr_states[i].location<<" Orientation: "<<env->curr_states[i].orientation<<endl;
-    //     // Print goal locations
-    //     cout<<"Goal Location: "<<env->goal_locations[i].front().first<<" Goal Orientation: "<<env->goal_locations[i].front().second<<endl;
-    
-    // // Check if current state is equal to goal state
-
-    //     if (env->curr_states[i].location == env->goal_locations[i].front().first &&
-    //         env->curr_states[i].orientation == env->goal_locations[i].front().second) 
-    //     {
-    //         // Current state is equal to goal state, pop the goal state
-    //         cout<<"Removing Goal"<<endl;
-    //         env->goal_locations[i].erase(env->goal_locations[i].begin());
-    //     }
-    // }
 
   return;
 }
@@ -454,6 +446,10 @@ conflict MAPFPlanner::findVertexConflicts(const std::vector<std::list<std::pair<
         // Find the agent with the shorter path
         int shorterAgent = (paths[agent1].size() < paths[agent2].size()) ? agent1 : agent2;
         int longerAgent = (shorterAgent == agent1) ? agent2 : agent1;
+        
+        if(paths[shorterAgent].size()==0){
+            continue;
+        }
 
         // Run a loop of length equal to the length of the shorter path where ith element of both paths are checked if they are equal
         for (int i = 0; i < paths[shorterAgent].size(); i++) 
@@ -494,7 +490,11 @@ conflict MAPFPlanner::findEdgeConflicts(const std::vector<std::list<std::pair<in
         // Find the agent with the shorter path
         int shorterAgent = (paths[agent1].size() < paths[agent2].size()) ? agent1 : agent2;
         int longerAgent = (shorterAgent == agent1) ? agent2 : agent1;
-
+        
+        if(paths[shorterAgent].size()==0){
+            continue;
+        }
+        // cout<<"Path length: "<<paths[shorterAgent].size()<<endl;
         // Run a loop of length equal to the length of the shorter path where ith element of both paths are checked if they are equal
         for (int i = 0; i < paths[shorterAgent].size()-1; i++) 
         {
