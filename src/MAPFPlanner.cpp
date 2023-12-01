@@ -596,7 +596,7 @@ vector<constraint_format> MAPFPlanner::convertToConstraint(conflict Conflict)
     else // If the conflict is an edge conflict
     {
         constraints.push_back(constraint_format(Conflict.agent1, Conflict.vertex1, Conflict.vertex2, Conflict.timestep));
-        constraints.push_back(constraint_format(Conflict.agent2, Conflict.vertex1, Conflict.vertex2, Conflict.timestep));
+        constraints.push_back(constraint_format(Conflict.agent2, Conflict.vertex2, Conflict.vertex1, Conflict.timestep));
     }
     return constraints;
 }
@@ -716,7 +716,7 @@ void MAPFPlanner::plan(int time_limit,vector<Action> & actions)
         }
         solution.push_back(path);
     }
-    printf("Initial Solution Generated -> Size of solution vector %ld \n",solution.size());
+    // printf("Initial Solution Generated -> Size of solution vector %ld \n",solution.size());
     
     // Find the list of conflicts in the next step
     // Create an independent copy of solutions
@@ -724,11 +724,11 @@ void MAPFPlanner::plan(int time_limit,vector<Action> & actions)
 
     list<conflict> conflicts = findVertexConflictsList(solution_copy);
     printf("Initial Conflicts Found -> Size of conflict list %ld \n",conflicts.size());
-    printf("VERTEX CONFLICTS: \n");    
-    for (const auto& conflict : conflicts) 
-    {
-        printf("Agent %d and Agent %d at location %d at timestep %d \n",conflict.agent1,conflict.agent2,conflict.vertex1,conflict.timestep);
-    }
+    // printf("VERTEX CONFLICTS: \n");    
+    // for (const auto& conflict : conflicts) 
+    // {
+    //     printf("Agent %d and Agent %d at location %d at timestep %d \n",conflict.agent1,conflict.agent2,conflict.vertex1,conflict.timestep);
+    // }
     conflicts.remove_if([](const conflict& c) { return c.timestep != 0; });
     printf("Updated Conflicts Found -> Size of conflict list %ld \n",conflicts.size());
     
@@ -747,12 +747,12 @@ void MAPFPlanner::plan(int time_limit,vector<Action> & actions)
         }
     }
     printf("Agents to resolve -> Size of agent list %ld \n",agentsToResolve.size());
-    printf("Agents to resolve: \n");
+    // printf("Agents to resolve: \n");
 
-    for (const auto& agent : agentsToResolve) 
-    {
-        printf("Agent %d \n",agent);
-    }
+    // for (const auto& agent : agentsToResolve) 
+    // {
+    //     printf("Agent %d \n",agent);
+    // }
     // Create a list of constraints for the agents to resolve and recalculate the path for the remaining agents
     vector<constraint_format> constraints;
     // Create an independent copy of solutions
@@ -770,11 +770,11 @@ void MAPFPlanner::plan(int time_limit,vector<Action> & actions)
     // Do the same for edge constraints here
     list<conflict> edgeConflicts = findEdgeConflictsList(solution_copy3);
     printf("Initial Edge Conflicts Found -> Size of conflict list %ld \n",edgeConflicts.size());
-    printf("EDGE CONFLICTS: \n");
-    for (const auto& conflict : edgeConflicts) 
-    {
-        printf("Agent %d and Agent %d at location %d at timestep %d \n",conflict.agent1,conflict.agent2,conflict.vertex1,conflict.timestep);
-    }
+    // printf("EDGE CONFLICTS: \n");
+    // for (const auto& conflict : edgeConflicts) 
+    // {
+    //     printf("Agent %d and Agent %d at location %d at timestep %d \n",conflict.agent1,conflict.agent2,conflict.vertex1,conflict.timestep);
+    // }
     edgeConflicts.remove_if([](const conflict& c) { return c.timestep != 0; });
     printf("Updated Edge Conflicts Found -> Size of conflict list %ld \n",edgeConflicts.size());
 
@@ -794,11 +794,11 @@ void MAPFPlanner::plan(int time_limit,vector<Action> & actions)
     }
 
     printf("Agents to resolve -> Size of agent list %ld \n",agentsToResolveEdge.size());
-    printf("Agents to resolve: \n");
-    for (const auto& agent : agentsToResolveEdge) 
-    {
-        printf("Agent %d \n",agent);
-    }
+    // printf("Agents to resolve: \n");
+    // for (const auto& agent : agentsToResolveEdge) 
+    // {
+    //     printf("Agent %d \n",agent);
+    // }
     // Create a list of constraints for the agents to resolve and recalculate the path for the remaining agents
     vector<list<pair<int,int>>> solution_copy4 = solution;
     for (const auto& agent : agentsToResolveEdge) 
@@ -817,13 +817,13 @@ void MAPFPlanner::plan(int time_limit,vector<Action> & actions)
     }
     printf("Constraints to resolve -> Size of constraint list %ld \n",constraints.size());
     // Print the locations of the constraints
-    printf("Constraints to resolve: \n");
-    for (const auto& constraint : constraints) 
-    {   
-        // COnvert location from int to pair
-        std::pair<int, int> location = convertToPair(constraint.vertex_1);
-        printf("(%d, %d) \n",location.first,location.second);
-    }
+    // printf("Constraints to resolve: \n");
+    // for (const auto& constraint : constraints) 
+    // {   
+    //     // COnvert location from int to pair
+    //     std::pair<int, int> location = convertToPair(constraint.vertex_1);
+    //     printf("(%d, %d) \n",location.first,location.second);
+    // }
     // Recalculate the path for the remaining agents
     vector<list<pair<int,int>>> final_solution;
     for (int i = 0; i < env->num_of_agents; i++) 
