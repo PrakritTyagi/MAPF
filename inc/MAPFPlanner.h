@@ -2,6 +2,7 @@
 #include <ctime>
 #include "SharedEnv.h"
 #include "ActionModel.h"
+#include <limits>
 
 
 
@@ -61,6 +62,7 @@ class MAPFPlanner
 public:
     SharedEnvironment* env;
     std::vector<std::list<std::pair<int,int>>> CBS_solution; 
+    unordered_map<int, unordered_map<int, pair<int, int>>> heuristics_map; // start location is key
 	MAPFPlanner(SharedEnvironment* env): env(env){};
     MAPFPlanner(){env = new SharedEnvironment();};
 	virtual ~MAPFPlanner(){delete env;};
@@ -92,6 +94,9 @@ public:
     int convertToSingleInt(int x, int y);
     std::pair<int, int> convertToPair(int singleInt);
     vector<constraint_format> convertToConstraint(conflict edgeConflict);
+
+    void computeHeuristic();
+    int get_heuristic(int start_loc, int start_dir, int goal_loc);
 };
 
 /**
