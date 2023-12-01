@@ -71,6 +71,8 @@ void MAPFPlanner::naive_CBS()
     // while loop till open_list is empty
     while (!OPEN_LIST.empty())
     {   
+        
+        // cout<<"1"<<endl;
         // pop the best CT_node with lowest sum-of-cost (create a comparator function to compare CT_nodes)
         std::shared_ptr<CT_node> curr_node = OPEN_LIST.top();
         
@@ -83,6 +85,7 @@ void MAPFPlanner::naive_CBS()
         // if no conflict, return the solution as this is the goal
         if (vertex_conflict.agent1 == -1 && vertex_conflict.agent2 == -1) 
         {   
+            // cout<<"2"<<endl;
             edge_conflict = findEdgeConflicts(curr_node->node_solution);
             final_conflict=edge_conflict;
             if (edge_conflict.agent1 == -1 && edge_conflict.agent2 == -1) 
@@ -93,15 +96,15 @@ void MAPFPlanner::naive_CBS()
                 return ;
             }
             else{
-                // cout<<"Edge Conflict"<<endl;
-                // cout<<"Agent 1: "<<edge_conflict.agent1<<" Agent 2: "<<edge_conflict.agent2<<" Vertex: "<<edge_conflict.vertex1<<" TimeStep: "<<edge_conflict.timestep;
-                // cout<<endl;
+                cout<<"Edge Conflict"<<endl;
+                cout<<"Agent 1: "<<edge_conflict.agent1<<" Agent 2: "<<edge_conflict.agent2<<" Vertex: "<<edge_conflict.vertex1<<" TimeStep: "<<edge_conflict.timestep;
+                cout<<endl;
             }
         }
         else{
-            // cout<<"Vertex Conflict"<<endl;
-            // cout<<"Agent 1: "<<vertex_conflict.agent1<<" Agent 2: "<<vertex_conflict.agent2<<" Vertex: "<<vertex_conflict.vertex1<<" TimeStep: "<<vertex_conflict.timestep;
-            // cout<<endl;
+            cout<<"Vertex Conflict"<<endl;
+            cout<<"Agent 1: "<<vertex_conflict.agent1<<" Agent 2: "<<vertex_conflict.agent2<<" Vertex: "<<vertex_conflict.vertex1<<" TimeStep: "<<vertex_conflict.timestep;
+            cout<<endl;
         }
         
         // if conflict, create two new CT_nodes
@@ -117,10 +120,13 @@ void MAPFPlanner::naive_CBS()
         list<pair<int,int>> new_path = single_agent_plan(agent1,env->curr_states[agent1].location,
                                     env->curr_states[agent1].orientation,
                                     env->goal_locations[agent1].front().first, left_node->node_constraints);
+        
         left_node->node_solution[agent1] = new_path;
         left_node->SOC = sum_of_costs(left_node->node_solution);
         left_node->parent_ptr = curr_node;
-
+        //  push the  new CT_node in open_list
+        if(left_node->SOC < INT64_MAX && !new_path.empty())
+            OPEN_LIST.push(left_node);
         // second node
         std::shared_ptr<CT_node> right_node = std::make_shared<CT_node>();
         curr_node->right_ptr = right_node;
@@ -130,14 +136,14 @@ void MAPFPlanner::naive_CBS()
         new_path = single_agent_plan(agent2, env->curr_states[agent2].location,
                                     env->curr_states[agent2].orientation,
                                     env->goal_locations[agent2].front().first,right_node->node_constraints);
+        
         right_node->node_solution[agent2] = new_path;
         right_node->SOC = sum_of_costs(right_node->node_solution);
         right_node->parent_ptr = curr_node;
 
-        // push the two new CT_nodes in open_list
-        if(left_node->SOC < INT64_MAX)
-            OPEN_LIST.push(left_node);
-        if(right_node->SOC < INT64_MAX)
+        // push the new CT_node in open_list
+        
+        if(right_node->SOC < INT64_MAX && !new_path.empty())    
             OPEN_LIST.push(right_node);
         
         curr_node.reset();
@@ -308,37 +314,41 @@ void MAPFPlanner::plan(int time_limit,vector<Action> & actions)
         naive_CBS() ;
         run_cbs=false;
         cout<<"CBS done"<<endl;
-
+        
+        for(int i=0;i<CBS_solution.size();i++){
+            CBS_solution[i].pop_front();
+        }
     }
     
     actions = std::vector<Action>(env->curr_states.size(), Action::W);
     
     for (int i = 0; i < env->num_of_agents; i++) 
-    {  
+    {   int count=0;
         list<pair<int,int>> path;
         if (env->goal_locations[i].empty()) 
         {
-            cout<<"Completed All the Goals"<<endl;
+            cout<<"Completed All the Goals!!!!!!!!!!!!"<<endl;
             path.push_back({env->curr_states[i].location, env->curr_states[i].orientation});
         }
         else 
         {   
-            // cout<<"Alotted Path"<<endl;
             path = CBS_solution[i];
+            
+            
             // If About to reach goal in next step then run CBS again
             if(path.front().first==env->goal_locations[i].front().first ){
                 run_cbs=true;
             }
-
-            // cout<<"AgentId: "<<i<<endl;
+            
             if(!CBS_solution[i].empty()){
+                
                 CBS_solution[i].pop_front();
             }
             else{
-                // cout<<"Empty Path Agent: "<<i<<endl;
+                
                 path.push_back({env->curr_states[i].location, env->curr_states[i].orientation});
             }
-               
+      
         }
 
         if (path.front().first != env->curr_states[i].location)
@@ -363,8 +373,6 @@ void MAPFPlanner::plan(int time_limit,vector<Action> & actions)
         
         
     }
-    
-
   return;
 }
 
@@ -373,20 +381,15 @@ bool MAPFPlanner::found_node(int agent_id, vector<constraint_format> constraints
         for(constraint_format n: constraints){
             if(n.agent_id== agent_id){
             // If Vertex Constraint
-                if(n.vertex_2==-1){
-                    // if(n.vertex_1==941 && n.t==4){
-                    //     cout<<"Node Location: "<<node->location<<"Time Step: "<<node->t<<endl;
-                    // }
-                    if(n.vertex_1 ==node->location && n.t==node->t){
-                        // cout<<"Found Node: "<< " Vertex: "<< n.vertex_1<<" TimeStep: "<<n.t;
-                        return true;
-                    }
+                if(n.vertex_2==-1){    
+                    if(n.vertex_1 ==node->location && n.t==node->t)
+                        return true; 
                 }
+
                 // If Edge Constraint
-                else{
-                    if((n.vertex_2 ==node->location && n.t+1==node->t) ||(n.vertex_1 ==node->location && n.t+1==node->t))  {
+                else{ 
+                    if((n.vertex_2 ==node->location && n.t+1==node->t))  
                         return true;
-                    }
                 }
             }
         }
@@ -559,6 +562,10 @@ conflict MAPFPlanner::findVertexConflicts(const std::vector<std::list<std::pair<
         // Find the agent with the shorter path
         int shorterAgent = (paths[agent1].size() < paths[agent2].size()) ? agent1 : agent2;
         int longerAgent = (shorterAgent == agent1) ? agent2 : agent1;
+        
+        if(paths[shorterAgent].size()==0){
+            continue;
+        }
 
         // Run a loop of length equal to the length of the shorter path where ith element of both paths are checked if they are equal
         for (int i = 0; i < paths[shorterAgent].size(); i++) 
@@ -599,7 +606,11 @@ conflict MAPFPlanner::findEdgeConflicts(const std::vector<std::list<std::pair<in
         // Find the agent with the shorter path
         int shorterAgent = (paths[agent1].size() < paths[agent2].size()) ? agent1 : agent2;
         int longerAgent = (shorterAgent == agent1) ? agent2 : agent1;
-
+        
+        if(paths[shorterAgent].size()==0){
+            continue;
+        }
+        // cout<<"Path length: "<<paths[shorterAgent].size()<<endl;
         // Run a loop of length equal to the length of the shorter path where ith element of both paths are checked if they are equal
         for (int i = 0; i < paths[shorterAgent].size()-1; i++) 
         {
@@ -652,7 +663,7 @@ vector<constraint_format> MAPFPlanner::convertToConstraint(conflict Conflict)
     else // If the conflict is an edge conflict
     {
         constraints.push_back(constraint_format(Conflict.agent1, Conflict.vertex1, Conflict.vertex2, Conflict.timestep));
-        constraints.push_back(constraint_format(Conflict.agent2, Conflict.vertex1, Conflict.vertex2, Conflict.timestep));
+        constraints.push_back(constraint_format(Conflict.agent2, Conflict.vertex2, Conflict.vertex1, Conflict.timestep));
     }
     return constraints;
 }
