@@ -44,7 +44,7 @@ void MAPFPlanner::naive_CBS()
     // calculate paths for all agents using A*(TODO: heuristics are already calculated in initialize function)
     // store it the root node
     vector<list<pair<int,int>>> solution;
-    
+
     for (int i = 0; i < env->num_of_agents; i++) 
     {   
         list<pair<int,int>> path;
@@ -61,9 +61,10 @@ void MAPFPlanner::naive_CBS()
         solution.push_back(path);
     }
     root_node->node_solution = solution;
-    
+    printf("Initial Solution Generated -> Size of solution vector %ld \n",root_node->node_solution.size());
     // calculate sum-of-cost and store it in root node
     root_node->SOC = sum_of_costs(root_node->node_solution);
+
     priority_queue<std::shared_ptr<CT_node>,vector<std::shared_ptr<CT_node>>,CT_CMP> OPEN_LIST;
     OPEN_LIST.push(root_node);
     
@@ -76,6 +77,7 @@ void MAPFPlanner::naive_CBS()
         std::shared_ptr<CT_node> curr_node = OPEN_LIST.top();
         
         OPEN_LIST.pop();
+
         // check for conflicts in the paths (create a conflict finding function)
         conflict vertex_conflict = findVertexConflicts(curr_node->node_solution);
         conflict edge_conflict, final_conflict;
@@ -143,9 +145,7 @@ void MAPFPlanner::naive_CBS()
         if(right_node->SOC < INT64_MAX && !new_path.empty())    
             OPEN_LIST.push(right_node);
         
-        
         curr_node.reset();
-        
     }
 }
 
@@ -195,10 +195,7 @@ void MAPFPlanner::plan(int time_limit,vector<Action> & actions)
         cout<<"CBS done"<<endl;
         
         for(int i=0;i<CBS_solution.size();i++){
-            if(!CBS_solution[i].empty()){
-                CBS_solution[i].pop_front();
-            }
-            
+            CBS_solution[i].pop_front();
         }
     }
     
