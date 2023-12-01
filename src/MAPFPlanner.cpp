@@ -61,7 +61,7 @@ void MAPFPlanner::naive_CBS()
         solution.push_back(path);
     }
     root_node->node_solution = solution;
-    printf("Initial Solution Generated -> Size of solution vector %ld \n",root_node->node_solution.size());
+   
     // calculate sum-of-cost and store it in root node
     root_node->SOC = sum_of_costs(root_node->node_solution);
 
