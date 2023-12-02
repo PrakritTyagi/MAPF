@@ -2,7 +2,9 @@
 #include <random>
 
 vector<list<pair<int,int>>> CBS_solution;
-
+// Create two variables to store the agents to be planned and the initial constraints
+vector<int> agents_to_be_planned = {};
+vector<constraint_format> initial_conflicts  = {};
 /**
  * @fn CT_node constructor
  * @brief Construct a new CT_node::CT_node object
@@ -37,31 +39,71 @@ struct CT_CMP
  * @fn CBS functions
  * 
 */
-void MAPFPlanner::naive_CBS()
+void MAPFPlanner::naive_CBS(
+    /* args */
+    // list of agents to be planned, default empty
+    vector<int> agents_to_be_planned,
+    // initial constraints, default empty
+    vector<constraint_format> initial_constraints
+)
 {   
     // create a root node with empty constraint variable
     std::shared_ptr<CT_node> root_node = std::make_shared<CT_node>();
     // calculate paths for all agents using A*(TODO: heuristics are already calculated in initialize function)
     // store it the root node
     vector<list<pair<int,int>>> solution;
-
-    for (int i = 0; i < env->num_of_agents; i++) 
-    {   
-        list<pair<int,int>> path;
-        if (env->goal_locations[i].empty()) 
-        {
-            path.push_back({env->curr_states[i].location, env->curr_states[i].orientation});
-        } 
-        else 
+    
+    // Plan for all paths if agents to be planned is empty, else just for those agents
+    if (agents_to_be_planned.empty()) 
+    {
+        for (int i = 0; i < env->num_of_agents; i++) 
         {   
-            path = single_agent_plan(i,env->curr_states[i].location,
-                                    env->curr_states[i].orientation,
-                                    env->goal_locations[i].front().first, root_node->node_constraints);
+            list<pair<int,int>> path;
+            if (env->goal_locations[i].empty()) 
+            {
+                path.push_back({env->curr_states[i].location, env->curr_states[i].orientation});
+            } 
+            else 
+            {   
+                path = single_agent_plan(i,env->curr_states[i].location,
+                                        env->curr_states[i].orientation,
+                                        env->goal_locations[i].front().first, root_node->node_constraints);
+            }
+            solution.push_back(path);
         }
-        solution.push_back(path);
+    } 
+    else 
+    {
+        for (int i = 0; i < env->num_of_agents; i++) 
+        {   
+            list<pair<int,int>> path;
+            // Check if i in agents_to_be_planned, then plan for that agent, else get the path from the existing solutions
+            if (std::find(agents_to_be_planned.begin(), agents_to_be_planned.end(), i) != agents_to_be_planned.end()) 
+            {
+                if (env->goal_locations[i].empty()) 
+                {
+                    path.push_back({env->curr_states[i].location, env->curr_states[i].orientation});
+                } 
+                else 
+                {   
+                    path = single_agent_plan(i,env->curr_states[i].location,
+                                            env->curr_states[i].orientation,
+                                            env->goal_locations[i].front().first, root_node->node_constraints);
+                }
+            } 
+            else 
+            {
+                // Take the current location of the agent and append the path from the existing solution
+                path.push_back({env->curr_states[i].location, env->curr_states[i].orientation});
+                path.splice(path.end(), CBS_solution[i]);
+            }
+            solution.push_back(path);
+        }
     }
+
     root_node->node_solution = solution;
-   
+    // root_node->node_constraints = initial_conflicty;
+
     // calculate sum-of-cost and store it in root node
     root_node->SOC = sum_of_costs(root_node->node_solution);
 
@@ -93,6 +135,7 @@ void MAPFPlanner::naive_CBS()
                 // return the solution
                 cout << "Solution found" << endl;
                 CBS_solution = curr_node->node_solution;
+                initial_conflicts = curr_node->node_constraints;
                 return ;
             }
             else{
@@ -168,6 +211,12 @@ void MAPFPlanner::initialize(int preprocess_time_limit)
 
     // calculate heuristic for all agents and store
     cout << "planner initialize done" << endl;
+
+    // Set the agents to be planned as all agents
+    for (int i = 0; i < env->num_of_agents; i++) 
+    {
+        agents_to_be_planned.push_back(i);
+    }
 }
 
 int MAPFPlanner::sum_of_costs(vector<list<pair<int,int>>> paths){
@@ -183,6 +232,8 @@ int MAPFPlanner::sum_of_costs(vector<list<pair<int,int>>> paths){
 void MAPFPlanner::plan(int time_limit,vector<Action> & actions) 
  {  
      
+    // Print timestep
+    // cout<<"Timestep: "<<env->timestep<<endl;
     static bool run_cbs=true;
     // static  vector<std::vector<std::pair<int, int>>> g_locations;
     static vector<list<pair<int,int>>> Solution;
@@ -190,13 +241,28 @@ void MAPFPlanner::plan(int time_limit,vector<Action> & actions)
     if(run_cbs){
         
         cout<<"Running CBS"<<endl;
-        naive_CBS() ;
+        
+        // Print the agents whoch will be replanned 
+        cout<<"Agents to be planned: ";
+        for(int i=0;i<agents_to_be_planned.size();i++){
+            cout<<agents_to_be_planned[i]<<" ";
+        }   
+        cout<<endl;
+
+        naive_CBS(agents_to_be_planned, initial_conflicts);
         run_cbs=false;
         cout<<"CBS done"<<endl;
         
+        // Print the size of the solutiuons for each agent
         for(int i=0;i<CBS_solution.size();i++){
+            cout<<"("<<i<<"->"<<CBS_solution[i].size()<<") ";
+        }
+        cout<<endl;
+        for(int i=0;i<CBS_solution.size();i++){
+
             CBS_solution[i].pop_front();
         }
+        agents_to_be_planned = {};
     }
     
     actions = std::vector<Action>(env->curr_states.size(), Action::W);
@@ -215,7 +281,11 @@ void MAPFPlanner::plan(int time_limit,vector<Action> & actions)
             
             
             // If About to reach goal in next step then run CBS again
-            if(path.front().first==env->goal_locations[i].front().first ){
+            if(path.front().first==env->goal_locations[i].front().first )
+            // if (path.size()==1){
+            {
+                //Add the agent to the agents to be planned for again
+                agents_to_be_planned.push_back(i);
                 run_cbs=true;
             }
             

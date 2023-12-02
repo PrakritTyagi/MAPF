@@ -72,7 +72,7 @@ public:
     virtual void plan(int time_limit, std::vector<Action> & plan);
 
     // CBS implementation function
-    void naive_CBS();
+    void naive_CBS(vector<int> agents_to_be_planned, vector<constraint_format> initial_conflicts);
 
     // Start kit dummy implementation
     std::list<pair<int,int>>single_agent_plan(int agent_id, int start,int start_direct, int end, vector<constraint_format> constraints);
