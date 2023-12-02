@@ -90,6 +90,7 @@ void MAPFPlanner::naive_CBS(
                                             env->curr_states[i].orientation,
                                             env->goal_locations[i].front().first, root_node->node_constraints);
                 }
+                printf("Agent %d path size: %ld | going to location (%d,%d)\n", i, path.size(), convertToPair(env->goal_locations[i].front().first).first, convertToPair(env->goal_locations[i].front().first).second);
             } 
             else 
             {
@@ -113,7 +114,7 @@ void MAPFPlanner::naive_CBS(
     // while loop till open_list is empty
     while (!OPEN_LIST.empty())
     {   
-        
+        printf("OPEN_LIST size: %ld\n", OPEN_LIST.size());
         // cout<<"1"<<endl;
         // pop the best CT_node with lowest sum-of-cost (create a comparator function to compare CT_nodes)
         std::shared_ptr<CT_node> curr_node = OPEN_LIST.top();
@@ -139,15 +140,15 @@ void MAPFPlanner::naive_CBS(
                 return ;
             }
             else{
-                cout<<"Edge Conflict"<<endl;
-                cout<<"Agent 1: "<<edge_conflict.agent1<<" Agent 2: "<<edge_conflict.agent2<<" Vertex: "<<edge_conflict.vertex1<<" TimeStep: "<<edge_conflict.timestep;
-                cout<<endl;
+                // cout<<"Edge Conflict"<<endl;
+                // cout<<"Agent 1: "<<edge_conflict.agent1<<" Agent 2: "<<edge_conflict.agent2<<" Vertex: "<<edge_conflict.vertex1<<" TimeStep: "<<edge_conflict.timestep;
+                // cout<<endl;
             }
         }
         else{
-            cout<<"Vertex Conflict"<<endl;
-            cout<<"Agent 1: "<<vertex_conflict.agent1<<" Agent 2: "<<vertex_conflict.agent2<<" Vertex: "<<vertex_conflict.vertex1<<" TimeStep: "<<vertex_conflict.timestep;
-            cout<<endl;
+            // cout<<"Vertex Conflict"<<endl;
+            // cout<<"Agent 1: "<<vertex_conflict.agent1<<" Agent 2: "<<vertex_conflict.agent2<<" Vertex: "<<vertex_conflict.vertex1<<" TimeStep: "<<vertex_conflict.timestep;
+            // cout<<endl;
         }
         // if conflict, create two new CT_nodes
         // first node
@@ -281,7 +282,7 @@ void MAPFPlanner::plan(int time_limit,vector<Action> & actions)
             
             
             // If About to reach goal in next step then run CBS again
-            if(path.front().first==env->goal_locations[i].front().first )
+            if(path.front().first==env->goal_locations[i].front().first || path.size()==0 )
             // if (path.size()==1){
             {
                 //Add the agent to the agents to be planned for again
@@ -294,7 +295,6 @@ void MAPFPlanner::plan(int time_limit,vector<Action> & actions)
                 CBS_solution[i].pop_front();
             }
             else{
-                
                 path.push_back({env->curr_states[i].location, env->curr_states[i].orientation});
             }
       
