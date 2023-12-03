@@ -37,7 +37,7 @@ struct CT_CMP
  * @fn CBS functions
  * 
 */
-void MAPFPlanner::naive_CBS()
+void MAPFPlanner::naive_CBS(vector<bool> find_new_path)
 {   
     // create a root node with empty constraint variable
     std::shared_ptr<CT_node> root_node = std::make_shared<CT_node>();
@@ -54,9 +54,25 @@ void MAPFPlanner::naive_CBS()
         } 
         else 
         {   
-            path = single_agent_plan(i,env->curr_states[i].location,
+            if(find_new_path[i]){
+                path = single_agent_plan(i,env->curr_states[i].location,
                                     env->curr_states[i].orientation,
                                     env->goal_locations[i].front().first, root_node->node_constraints);
+            }
+            else{
+                pair<int,int> curr_state=make_pair(env->curr_states[i].location, env->curr_states[i].orientation);
+                auto it=find(carry_forward_soln[i].begin(),carry_forward_soln[i].end(),curr_state);
+                
+                if(it!=carry_forward_soln[i].end()){
+                    path = list<pair<int,int>>(it,carry_forward_soln[i].end());
+                }
+                else{
+                    path = single_agent_plan(i,env->curr_states[i].location,
+                                    env->curr_states[i].orientation,
+                                    env->goal_locations[i].front().first, root_node->node_constraints);
+                }
+            }
+            
         }
         solution.push_back(path);
     }
@@ -93,6 +109,7 @@ void MAPFPlanner::naive_CBS()
                 // return the solution
                 cout << "Solution found" << endl;
                 CBS_solution = curr_node->node_solution;
+                carry_forward_soln = curr_node->node_solution;
                 return ;
             }
             else{
@@ -170,22 +187,22 @@ void MAPFPlanner::computeHeuristic()
     int map_size = env->map.size();
 
     for(int i=0; i < map_size; i++)
-    {
-        for(int j=0; j < 4; j++)
-        {
-            AstarNode* s = new AstarNode(i, j, 0, 0, 0, nullptr); // location id, direction, g, h, t, parent
-            all_start_locations.push_back(s);
+    {   if(validateCell(i)){
+            for(int j=0; j < 4; j++)
+            {
+                AstarNode* s = new AstarNode(i, j, 0, 0, 0, nullptr); // location id, direction, g, h, t, parent
+                all_start_locations.push_back(s);
+            }
         }
     }
 
     int count = 0;
     for(auto start_loc:all_start_locations)
     {
-        cout << "counter " << count << endl;
-
+        
         priority_queue<AstarNode*,vector<AstarNode*>,cmp> open_list;
         unordered_map<int,AstarNode*> all_nodes;
-        unordered_map<int, pair<int, int> > heuristics; // key is location*4+direction, pair is g and time
+        unordered_map<int, int>  heuristics; // key is location*4+direction, pair is g and time
         open_list.push(start_loc);
         all_nodes[start_loc->location*4 + start_loc->direction] = start_loc;
         
@@ -197,7 +214,7 @@ void MAPFPlanner::computeHeuristic()
             {
                 continue;
             }
-            heuristics[curr->location*4 + curr->direction] = pair<int,int>(curr->g, curr->t);
+            heuristics[curr->location*4 + curr->direction] = curr->g;
 
             list<pair<int,int>> neighbors = getNeighbors(curr->location, curr->direction);
             for (const pair<int,int>& neighbor: neighbors)
@@ -212,12 +229,11 @@ void MAPFPlanner::computeHeuristic()
                         old->g = curr->g+1;
                         old->f = old->h+old->g;
                         old->parent = curr;
-                        old->t=curr->t+1;
                     }
                 }
                 else
                 {
-                    AstarNode* next_node = new AstarNode(neighbor.first, neighbor.second, curr->g+1, 0, curr->t+1, curr);
+                    AstarNode* next_node = new AstarNode(neighbor.first, neighbor.second, curr->g+1, 0, 0, curr);
                     open_list.push(next_node);
                     all_nodes[neighbor.first*4+neighbor.second] = next_node;
                 }
@@ -243,7 +259,7 @@ void MAPFPlanner::computeHeuristic()
     // print first_heuristic
     for(auto h: first_heuristic)
     {
-        cout << "location*4+direction: " << h.first << " g: " << h.second.first << " t: " << h.second.second << endl;
+        cout << "location*4+direction: " << h.first << " g: " << h.second << endl;
     }
     // print map row and col
     cout << "map row: " << env->rows << " map col: " << env->cols << endl;
@@ -261,7 +277,7 @@ int MAPFPlanner::get_heuristic(int start_loc, int start_dir, int goal_loc)
     int min_heuristic = INT_MAX;
     for(int i=0; i < 4; i++)
     {
-        int heuristic_value = heuristic[goal_loc*4 + i].first;
+        int heuristic_value = heuristic[goal_loc*4 + i];
         if(heuristic_value < min_heuristic)
         {
             min_heuristic = heuristic_value;
@@ -280,12 +296,12 @@ void MAPFPlanner::initialize(int preprocess_time_limit)
     cout << "****************************************************" << endl;
     cout << "planner preprocess time limit: " << preprocess_time_limit << endl;
     // start timer
-    auto start = std::chrono::high_resolution_clock::now();
-    computeHeuristic();
-    // end timer
-    auto end = std::chrono::high_resolution_clock::now();
-    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end-start);
-    cout << "Heuristic compute time: " << duration.count() << "milliseconds" <<endl;  
+    // auto start = std::chrono::high_resolution_clock::now();
+    // computeHeuristic();
+    // // end timer
+    // auto end = std::chrono::high_resolution_clock::now();
+    // auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end-start);
+    // cout << "Heuristic compute time: " << duration.count() << "milliseconds" <<endl;  
 
     // calculate heuristic for all agents and store
     cout << "planner initialize done" << endl;
@@ -307,17 +323,21 @@ void MAPFPlanner::plan(int time_limit,vector<Action> & actions)
     static bool run_cbs=true;
     // static  vector<std::vector<std::pair<int, int>>> g_locations;
     static vector<list<pair<int,int>>> Solution;
-    
+    static vector<bool> find_new_path(env->num_of_agents,true);
     if(run_cbs){
         
         cout<<"Running CBS"<<endl;
-        naive_CBS() ;
+        naive_CBS(find_new_path);
         run_cbs=false;
         cout<<"CBS done"<<endl;
         
-        for(int i=0;i<CBS_solution.size();i++){
-            CBS_solution[i].pop_front();
+        for(int i=0;i<find_new_path.size();i++){
+            find_new_path[i]=false;
         }
+
+        // for(int i=0;i<CBS_solution.size();i++){
+        //     CBS_solution[i].pop_front();
+        // }
     }
     
     actions = std::vector<Action>(env->curr_states.size(), Action::W);
@@ -338,14 +358,13 @@ void MAPFPlanner::plan(int time_limit,vector<Action> & actions)
             // If About to reach goal in next step then run CBS again
             if(path.front().first==env->goal_locations[i].front().first ){
                 run_cbs=true;
+                find_new_path[i]=true;
             }
             
             if(!CBS_solution[i].empty()){
-                
                 CBS_solution[i].pop_front();
             }
-            else{
-                
+            else{     
                 path.push_back({env->curr_states[i].location, env->curr_states[i].orientation});
             }
       
@@ -403,8 +422,8 @@ list<pair<int,int>> MAPFPlanner::single_agent_plan(int agent_id, int start,int s
     priority_queue<AstarNode*,vector<AstarNode*>,cmp> open_list;
     unordered_map<int,AstarNode*> all_nodes;
     unordered_set<int> close_list;
-    // AstarNode* s = new AstarNode(start, start_direct, 0, getEuclideanDistance(start,end), nullptr);
-    AstarNode* s = new AstarNode(start, start_direct, 0, get_heuristic(start, start_direct, end), nullptr);
+    AstarNode* s = new AstarNode(start, start_direct, 0, getEuclideanDistance(start,end), nullptr);
+    // AstarNode* s = new AstarNode(start, start_direct, 0, get_heuristic(start, start_direct, end), nullptr);
     s->t=0;
     open_list.push(s);
     all_nodes[start*4 + start_direct] = s;
@@ -429,7 +448,7 @@ list<pair<int,int>> MAPFPlanner::single_agent_plan(int agent_id, int start,int s
 
         list<pair<int,int>> neighbors = getNeighbors(curr->location, curr->direction);
         for (const pair<int,int>& neighbor: neighbors)
-        {   AstarNode* next_node = new AstarNode(neighbor.first, neighbor.second,curr->g+1,get_heuristic(neighbor.first,neighbor.second,end),curr->t+1 ,curr);
+        {   AstarNode* next_node = new AstarNode(neighbor.first, neighbor.second,curr->g+1,getEuclideanDistance(neighbor.first, end),curr->t+1 ,curr);
             
             if(found_node(agent_id, constraints, next_node)){
                 delete next_node;
@@ -488,6 +507,14 @@ int MAPFPlanner::getManhattanDistance(int loc1, int loc2)
     return abs(loc1_x - loc2_x) + abs(loc1_y - loc2_y);
 }
 
+bool MAPFPlanner::validateCell(int loc)
+{
+    int loc_x = loc/env->cols;
+    int loc_y = loc%env->cols;
+    if (loc_x >= env->rows || loc_y >= env->cols || env->map[loc] == 1)
+        return false;
+    return true;
+}
 
 bool MAPFPlanner::validateMove(int loc, int loc2)
 {

@@ -62,7 +62,8 @@ class MAPFPlanner
 public:
     SharedEnvironment* env;
     std::vector<std::list<std::pair<int,int>>> CBS_solution; 
-    unordered_map<int, unordered_map<int, pair<int, int>>> heuristics_map; // start location is key
+    std::vector<std::list<std::pair<int,int>>> carry_forward_soln; 
+    unordered_map<int, unordered_map<int,int>> heuristics_map; // start location is key
 	MAPFPlanner(SharedEnvironment* env): env(env){};
     MAPFPlanner(){env = new SharedEnvironment();};
 	virtual ~MAPFPlanner(){delete env;};
@@ -74,7 +75,7 @@ public:
     virtual void plan(int time_limit, std::vector<Action> & plan);
 
     // CBS implementation function
-    void naive_CBS();
+    void naive_CBS(vector<bool> find_new_path);
 
     // Start kit dummy implementation
     std::list<pair<int,int>>single_agent_plan(int agent_id, int start,int start_direct, int end, vector<constraint_format> constraints);
@@ -86,7 +87,7 @@ public:
     bool validateMove(int loc,int loc2);
 
     //My work
-
+    bool validateCell(int loc);
     void combinationsUtil(const std::vector<int>& arr, std::vector<std::vector<int>>& result, std::vector<int>& combination, int start, int end, int index, int k); 
     std::vector<std::vector<int>> combinations(std::vector<int> arr);
     conflict findVertexConflicts(const std::vector<std::list<std::pair<int, int>>>& paths); 
