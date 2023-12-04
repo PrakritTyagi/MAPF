@@ -51,14 +51,16 @@ void MAPFPlanner::naive_CBS(
     std::shared_ptr<CT_node> root_node = std::make_shared<CT_node>();
     // calculate paths for all agents using A*(TODO: heuristics are already calculated in initialize function)
     // store it the root node
+    root_node->node_constraints = initial_constraints;
     vector<list<pair<int,int>>> solution;
     
     // Plan for all paths if agents to be planned is empty, else just for those agents
-    if (agents_to_be_planned.empty()) 
-    {
-        for (int i = 0; i < env->num_of_agents; i++) 
-        {   
-            list<pair<int,int>> path;
+    for (int i = 0; i < env->num_of_agents; i++) 
+    {   
+        list<pair<int,int>> path;
+        // Check if i in agents_to_be_planned, then plan for that agent, else get the path from the existing solutions
+        if (std::find(agents_to_be_planned.begin(), agents_to_be_planned.end(), i) != agents_to_be_planned.end()) 
+        {
             if (env->goal_locations[i].empty()) 
             {
                 path.push_back({env->curr_states[i].location, env->curr_states[i].orientation});
@@ -69,37 +71,15 @@ void MAPFPlanner::naive_CBS(
                                         env->curr_states[i].orientation,
                                         env->goal_locations[i].front().first, root_node->node_constraints);
             }
-            solution.push_back(path);
+            printf("Agent %d path size: %ld | going to location (%d,%d)\n", i, path.size(), convertToPair(env->goal_locations[i].front().first).first, convertToPair(env->goal_locations[i].front().first).second);
+        } 
+        else 
+        {
+            // Take the current location of the agent and append the path from the existing solution
+            path.push_back({env->curr_states[i].location, env->curr_states[i].orientation});
+            path.splice(path.end(), CBS_solution[i]);
         }
-    } 
-    else 
-    {
-        for (int i = 0; i < env->num_of_agents; i++) 
-        {   
-            list<pair<int,int>> path;
-            // Check if i in agents_to_be_planned, then plan for that agent, else get the path from the existing solutions
-            if (std::find(agents_to_be_planned.begin(), agents_to_be_planned.end(), i) != agents_to_be_planned.end()) 
-            {
-                if (env->goal_locations[i].empty()) 
-                {
-                    path.push_back({env->curr_states[i].location, env->curr_states[i].orientation});
-                } 
-                else 
-                {   
-                    path = single_agent_plan(i,env->curr_states[i].location,
-                                            env->curr_states[i].orientation,
-                                            env->goal_locations[i].front().first, root_node->node_constraints);
-                }
-                printf("Agent %d path size: %ld | going to location (%d,%d)\n", i, path.size(), convertToPair(env->goal_locations[i].front().first).first, convertToPair(env->goal_locations[i].front().first).second);
-            } 
-            else 
-            {
-                // Take the current location of the agent and append the path from the existing solution
-                path.push_back({env->curr_states[i].location, env->curr_states[i].orientation});
-                path.splice(path.end(), CBS_solution[i]);
-            }
-            solution.push_back(path);
-        }
+        solution.push_back(path);
     }
 
     root_node->node_solution = solution;
