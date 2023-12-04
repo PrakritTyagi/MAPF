@@ -176,11 +176,12 @@ void MAPFPlanner::naive_CBS(
 
     // Free the memory occupied by the open_list
     // Clean up the memory occupied by the open_list
-    while (!OPEN_LIST.empty()) {
+    while (!OPEN_LIST.empty()) 
+    {
         std::shared_ptr<CT_node> node = OPEN_LIST.top();
         OPEN_LIST.pop();
         node.reset();
-}
+    }
 
     return ;
 }
@@ -251,9 +252,13 @@ void MAPFPlanner::plan(int time_limit,vector<Action> & actions)
             cout<<"("<<i<<"->"<<CBS_solution[i].size()<<") ";
         }
         cout<<endl;
-        for(int i=0;i<CBS_solution.size();i++){
-
-            CBS_solution[i].pop_front();
+        for(int i=0;i<CBS_solution.size();i++)
+        {
+            if(!(CBS_solution[i].empty()))
+                CBS_solution[i].pop_front();
+            else
+                // reset initial_conflicts
+                initial_conflicts = {};
         }
         agents_to_be_planned = {};
     }
