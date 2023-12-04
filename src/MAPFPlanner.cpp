@@ -94,7 +94,7 @@ void MAPFPlanner::naive_CBS(
     // while loop till open_list is empty
     while (!OPEN_LIST.empty())
     {   
-        printf("OPEN_LIST size: %ld\n", OPEN_LIST.size());
+        // printf("OPEN_LIST size: %ld\n", OPEN_LIST.size());
         // cout<<"1"<<endl;
         // pop the best CT_node with lowest sum-of-cost (create a comparator function to compare CT_nodes)
         std::shared_ptr<CT_node> curr_node = OPEN_LIST.top();
@@ -115,9 +115,11 @@ void MAPFPlanner::naive_CBS(
             {
                 // return the solution
                 cout << "Solution found" << endl;
+                // save the solution and constraints as independent variables
                 CBS_solution = curr_node->node_solution;
                 initial_conflicts = curr_node->node_constraints;
-                return ;
+                // Clean up the memory
+                break;
             }
             else{
                 // cout<<"Edge Conflict"<<endl;
@@ -171,6 +173,16 @@ void MAPFPlanner::naive_CBS(
         
         curr_node.reset();
     }
+
+    // Free the memory occupied by the open_list
+    // Clean up the memory occupied by the open_list
+    while (!OPEN_LIST.empty()) {
+        std::shared_ptr<CT_node> node = OPEN_LIST.top();
+        OPEN_LIST.pop();
+        node.reset();
+}
+
+    return ;
 }
 
 struct cmp
@@ -258,8 +270,7 @@ void MAPFPlanner::plan(int time_limit,vector<Action> & actions)
         }
         else 
         {   
-            path = CBS_solution[i];
-            
+            path = CBS_solution[i];;
             
             // If About to reach goal in next step then run CBS again
             if(path.front().first==env->goal_locations[i].front().first || path.size()==0 )
