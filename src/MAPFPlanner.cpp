@@ -91,14 +91,16 @@ void MAPFPlanner::naive_CBS(
     priority_queue<std::shared_ptr<CT_node>,vector<std::shared_ptr<CT_node>>,CT_CMP> OPEN_LIST;
     OPEN_LIST.push(root_node);
     
+    int count=0;
+    int count_limit = 5000;
     // while loop till open_list is empty
-    while (!OPEN_LIST.empty())
+    while (!OPEN_LIST.empty() && count<count_limit)
     {   
         // printf("OPEN_LIST size: %ld\n", OPEN_LIST.size());
         // cout<<"1"<<endl;
         // pop the best CT_node with lowest sum-of-cost (create a comparator function to compare CT_nodes)
         std::shared_ptr<CT_node> curr_node = OPEN_LIST.top();
-        
+        count++;
         OPEN_LIST.pop();
 
         // check for conflicts in the paths (create a conflict finding function)
@@ -171,6 +173,15 @@ void MAPFPlanner::naive_CBS(
         if(right_node->SOC < INT64_MAX && !new_path.empty())    
             OPEN_LIST.push(right_node);
         
+        curr_node.reset();
+    }
+
+    if(count >= count_limit)
+    {   
+        cout<<"CBS count limit reached"<<endl;
+        std::shared_ptr<CT_node> curr_node = OPEN_LIST.top();
+        CBS_solution = curr_node->node_solution;
+        initial_conflicts = curr_node->node_constraints;
         curr_node.reset();
     }
 
