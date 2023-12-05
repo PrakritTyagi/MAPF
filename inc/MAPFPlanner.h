@@ -90,8 +90,9 @@ public:
     bool validateCell(int loc);
     void combinationsUtil(const std::vector<int>& arr, std::vector<std::vector<int>>& result, std::vector<int>& combination, int start, int end, int index, int k); 
     std::vector<std::vector<int>> combinations(std::vector<int> arr);
-    conflict findConflicts(const std::vector<std::list<std::pair<int, int>>>& paths); 
-    // conflict findEdgeConflicts(const std::vector<std::list<std::pair<int, int>>>& paths);
+    conflict findCardinalConflicts(const std::vector<std::list<std::pair<int, int>>>& paths, vector<constraint_format> &constraints);
+    conflict findConflicts(const std::vector<std::list<std::pair<int, int>>>& paths, vector<constraint_format> &constraints);  
+    bool isCardinal(const vector<list<pair<int, int>>>& paths, conflict Conflict, vector<constraint_format> &constraints);
     int convertToSingleInt(int x, int y);
     std::pair<int, int> convertToPair(int singleInt);
     vector<constraint_format> convertToConstraint(conflict edgeConflict);
