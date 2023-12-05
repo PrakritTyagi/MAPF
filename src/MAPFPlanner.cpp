@@ -95,34 +95,20 @@ void MAPFPlanner::naive_CBS(vector<bool> find_new_path)
         OPEN_LIST.pop();
 
         // check for conflicts in the paths (create a conflict finding function)
-        conflict vertex_conflict = findVertexConflicts(curr_node->node_solution);
-        conflict edge_conflict, final_conflict;
-        final_conflict=vertex_conflict;
+        conflict final_conflict = findConflicts(curr_node->node_solution);
+    
+        
         // if no conflict, return the solution as this is the goal
-        if (vertex_conflict.agent1 == -1 && vertex_conflict.agent2 == -1) 
-        {   
-            // cout<<"2"<<endl;
-            edge_conflict = findEdgeConflicts(curr_node->node_solution);
-            final_conflict=edge_conflict;
-            if (edge_conflict.agent1 == -1 && edge_conflict.agent2 == -1) 
-            {
-                // return the solution
-                cout << "Solution found" << endl;
-                CBS_solution = curr_node->node_solution;
-                carry_forward_soln = curr_node->node_solution;
-                return ;
-            }
-            else{
-                cout<<"Edge Conflict"<<endl;
-                cout<<"Agent 1: "<<edge_conflict.agent1<<" Agent 2: "<<edge_conflict.agent2<<" Vertex: "<<edge_conflict.vertex1<<" TimeStep: "<<edge_conflict.timestep;
-                cout<<endl;
-            }
+ 
+        if (final_conflict.agent1 == -1 && final_conflict.agent2 == -1) 
+        {
+            // return the solution
+            cout << "Solution found" << endl;
+            CBS_solution = curr_node->node_solution;
+            carry_forward_soln = curr_node->node_solution;
+            return ;
         }
-        else{
-            cout<<"Vertex Conflict"<<endl;
-            cout<<"Agent 1: "<<vertex_conflict.agent1<<" Agent 2: "<<vertex_conflict.agent2<<" Vertex: "<<vertex_conflict.vertex1<<" TimeStep: "<<vertex_conflict.timestep;
-            cout<<endl;
-        }
+            
         
         // if conflict, create two new CT_nodes
         // first node
@@ -570,7 +556,7 @@ std::vector<std::vector<int>> MAPFPlanner::combinations(std::vector<int> arr) {
     return result;
 }
 
-conflict MAPFPlanner::findVertexConflicts(const std::vector<std::list<std::pair<int, int>>>& paths) 
+conflict MAPFPlanner::findConflicts(const std::vector<std::list<std::pair<int, int>>>& paths) 
 {
     std::vector<int> agentIndices(paths.size());
     std::iota(agentIndices.begin(), agentIndices.end(), 0);  // Fill with 0, 1, ..., n-1
@@ -598,38 +584,30 @@ conflict MAPFPlanner::findVertexConflicts(const std::vector<std::list<std::pair<
         for (int i = 0; i < paths[shorterAgent].size(); i++) 
         {
             // Create variable which hold the value of ith path element of both agents without using auto
-            std::pair<int, int> shorterAgentPathElement = *std::next(paths[shorterAgent].begin(), i);
-            std::pair<int, int> longerAgentPathElement = *std::next(paths[longerAgent].begin(), i);
+            
+            pair<int, int> shorterAgentPath_Current = *std::next(paths[shorterAgent].begin(), i);
+            pair<int, int> longerAgentPath_Current = *std::next(paths[longerAgent].begin(), i);
             // Check if the two agents are at the same location at the same timestep
-            if (shorterAgentPathElement.first == longerAgentPathElement.first) 
+            if (shorterAgentPath_Current.first == longerAgentPath_Current.first) 
             {
-                return conflict(shorterAgent, longerAgent, shorterAgentPathElement.first, i);
+                cout<<"Vertex Conflict"<<endl;
+                cout<<"Agent 1: "<<shorterAgent<<" Agent 2: "<<longerAgent<<" Vertex: "<<shorterAgentPath_Current.first<<" TimeStep: "<<i<<endl;
+                return conflict(shorterAgent, longerAgent, shorterAgentPath_Current.first, i);
             }
+   
         }
 
     }
-    return conflict();
-}
-
-//create a function to get the first edge conflicts
-conflict MAPFPlanner::findEdgeConflicts(const std::vector<std::list<std::pair<int, int>>>& paths) 
-{
-    std::vector<int> agentIndices(paths.size());
-    std::iota(agentIndices.begin(), agentIndices.end(), 0); 
-    std::vector<std::vector<int>> agentCombinations = combinations(agentIndices);
-  
-    // Check conflicts for each combination of 2 agents
     
     for (const auto& combination : agentCombinations) {
         // In the combination, combination[0] is the first agent and combination[1] is the second agent
         if(combination[0]==combination[1]){
-            
             continue;
         }
-      
+       
         int agent1 = combination[0];
         int agent2 = combination[1];
-
+        
         // Find the agent with the shorter path
         int shorterAgent = (paths[agent1].size() < paths[agent2].size()) ? agent1 : agent2;
         int longerAgent = (shorterAgent == agent1) ? agent2 : agent1;
@@ -637,32 +615,33 @@ conflict MAPFPlanner::findEdgeConflicts(const std::vector<std::list<std::pair<in
         if(paths[shorterAgent].size()==0){
             continue;
         }
-        // cout<<"Path length: "<<paths[shorterAgent].size()<<endl;
-        // Run a loop of length equal to the length of the shorter path where ith element of both paths are checked if they are equal
-        for (int i = 0; i < paths[shorterAgent].size()-1; i++) 
-        {
-            // Create variable which hold the value of ith and i+1th path element of both agents without using auto
-            std::pair<int, int> shorterAgentPath_Current = *std::next(paths[shorterAgent].begin(), i);
-            std::pair<int, int> shorterAgentPath_Next = *std::next(paths[shorterAgent].begin(), i+1);
-            std::pair<int, int> longerAgentPath_Current = *std::next(paths[longerAgent].begin(), i);
-            std::pair<int, int> longerAgentPath_Next = *std::next(paths[longerAgent].begin(), i+1);
-            // Check if the two agents are at the same location at the same timestep
-          
-            // if((agent1==3 && agent2==5)){
-            //     cout<<"Agent 1: "<<agent1<<" Agent 2: "<<agent2<<endl;
-            //     cout<<"Shorter Agent Path Current: "<<shorterAgentPath_Current.first<<" Shorter Agent Path Next: "<<shorterAgentPath_Next.first<<endl;
-            //     cout<<"Longer Agent Path Current: "<<longerAgentPath_Current.first<<" Longer Agent Path Next: "<<longerAgentPath_Next.first<<endl;
-            // }
 
+        // Run a loop of length equal to the length of the shorter path where ith element of both paths are checked if they are equal
+        for (int i = 0; i < paths[shorterAgent].size(); i++) 
+        {
+            // Create variable which hold the value of ith path element of both agents without using auto
+            
+            pair<int, int> shorterAgentPath_Current = *std::next(paths[shorterAgent].begin(), i);
+            pair<int, int> shorterAgentPath_Next = *std::next(paths[shorterAgent].begin(), i+1);
+            pair<int, int> longerAgentPath_Current = *std::next(paths[longerAgent].begin(), i);
+            pair<int, int> longerAgentPath_Next = *std::next(paths[longerAgent].begin(), i+1);
+            // Check if the two agents are at the same location at the same timestep
+            
             if (shorterAgentPath_Current.first == longerAgentPath_Next.first && shorterAgentPath_Next.first == longerAgentPath_Current.first) 
             {
+                cout<<"Edge Conflict"<<endl;
+                cout<<"Agent 1: "<<shorterAgent<<" Agent 2: "<<longerAgent<<" Vertex: "<<shorterAgentPath_Current.first<<" TimeStep: "<<i<<endl;
                 return conflict(shorterAgent, longerAgent, shorterAgentPath_Current.first, longerAgentPath_Current.first, i);
             }
+
+
         }
 
     }
     return conflict();
 }
+
+
 
 //Create a function to convert x and y coordinates to a single integer for a map represented as a vector]
 int MAPFPlanner::convertToSingleInt(int x, int y)
