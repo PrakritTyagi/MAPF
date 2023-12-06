@@ -1,5 +1,10 @@
 #include <MAPFPlanner.h>
 #include <random>
+// create variables for start time, vector of Open list count, and counter for number of times CBS was called. Print the data after the last step
+int start_time = 0;
+vector<int> open_list_count = {};
+int CBS_count = 0;
+int plan_count = 0;
 
 vector<list<pair<int,int>>> CBS_solution;
 // Create two variables to store the agents to be planned and the initial constraints
@@ -47,6 +52,7 @@ void MAPFPlanner::naive_CBS(
     vector<constraint_format> initial_constraints
 )
 {   
+    CBS_count++;
     // create a root node with empty constraint variable
     std::shared_ptr<CT_node> root_node = std::make_shared<CT_node>();
     // calculate paths for all agents using A*(TODO: heuristics are already calculated in initialize function)
@@ -71,7 +77,7 @@ void MAPFPlanner::naive_CBS(
                                         env->curr_states[i].orientation,
                                         env->goal_locations[i].front().first, root_node->node_constraints);
             }
-            printf("Agent %d path size: %ld | going to location (%d,%d)\n", i, path.size(), convertToPair(env->goal_locations[i].front().first).first, convertToPair(env->goal_locations[i].front().first).second);
+            // printf("Agent %d path size: %ld | going to location (%d,%d)\n", i, path.size(), convertToPair(env->goal_locations[i].front().first).first, convertToPair(env->goal_locations[i].front().first).second);
         } 
         else 
         {
@@ -116,10 +122,11 @@ void MAPFPlanner::naive_CBS(
             if (edge_conflict.agent1 == -1 && edge_conflict.agent2 == -1) 
             {
                 // return the solution
-                cout << "Solution found" << endl;
+                // cout << "Solution found" << endl;
                 // save the solution and constraints as independent variables
                 CBS_solution = curr_node->node_solution;
                 initial_conflicts = curr_node->node_constraints;
+                
                 // Clean up the memory
                 break;
             }
@@ -176,6 +183,7 @@ void MAPFPlanner::naive_CBS(
         curr_node.reset();
     }
 
+    open_list_count.push_back(count);
     if(count >= count_limit)
     {   
         cout<<"CBS count limit reached"<<endl;
@@ -222,6 +230,7 @@ void MAPFPlanner::initialize(int preprocess_time_limit)
     {
         agents_to_be_planned.push_back(i);
     }
+    start_time = clock();
 }
 
 int MAPFPlanner::sum_of_costs(vector<list<pair<int,int>>> paths){
@@ -236,7 +245,7 @@ int MAPFPlanner::sum_of_costs(vector<list<pair<int,int>>> paths){
 // plan using simple A* that ignores the time dimension
 void MAPFPlanner::plan(int time_limit,vector<Action> & actions) 
  {  
-     
+    plan_count++; 
     // Print timestep
     // cout<<"Timestep: "<<env->timestep<<endl;
     static bool run_cbs=true;
@@ -245,24 +254,25 @@ void MAPFPlanner::plan(int time_limit,vector<Action> & actions)
     
     if(run_cbs){
         
-        cout<<"Running CBS"<<endl;
+        // cout<<"Running CBS"<<endl;
         
         // Print the agents whoch will be replanned 
-        cout<<"Agents to be planned: ";
-        for(int i=0;i<agents_to_be_planned.size();i++){
-            cout<<agents_to_be_planned[i]<<" ";
-        }   
-        cout<<endl;
+        // cout<<"Agents to be planned: ";
+        // for(int i=0;i<agents_to_be_planned.size();i++){
+        //     cout<<agents_to_be_planned[i]<<" ";
+        // }   
+        // cout<<endl;
 
         naive_CBS(agents_to_be_planned, initial_conflicts);
         run_cbs=false;
-        cout<<"CBS done"<<endl;
+        // cout<<"CBS done"<<endl;
         
         // Print the size of the solutiuons for each agent
-        for(int i=0;i<CBS_solution.size();i++){
-            cout<<"("<<i<<"->"<<CBS_solution[i].size()<<") ";
-        }
-        cout<<endl;
+        // for(int i=0;i<CBS_solution.size();i++){
+        //     cout<<"("<<i<<"->"<<CBS_solution[i].size()<<") ";
+        // }
+        // cout<<endl;
+
         for(int i=0;i<CBS_solution.size();i++)
         {
             if(!(CBS_solution[i].empty()))
@@ -330,7 +340,29 @@ void MAPFPlanner::plan(int time_limit,vector<Action> & actions)
         
     }
     
-    
+    // Check the environment timestep. If more than 4999, publish the result
+    if(plan_count>4999)
+    {
+        // mark time taken
+        int end_time = clock();
+        cout<<"Time taken: "<<(end_time-start_time)/double(CLOCKS_PER_SEC)*1000<<" ms"<<endl;
+        cout<<"Naive CBS called: "<<CBS_count<<endl;
+        // Print avereage open list size
+        double sum=0;
+        for(int i=0;i<open_list_count.size();i++){
+            sum+=open_list_count[i];
+        }
+        cout<<"Average open list size: "<<sum/open_list_count.size()<<endl;
+        // Maximum open list size
+        int max=0;
+        for(int i=0;i<open_list_count.size();i++){
+            if(open_list_count[i]>max){
+                max=open_list_count[i];
+            }
+        }
+        cout<<"Maximum open list size: "<<max<<endl;
+        
+    }
 
   return;
 }
